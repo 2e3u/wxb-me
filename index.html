@@ -239,6 +239,28 @@ body {
 .project-links a:hover { text-decoration: underline; }
 @media (max-width: 640px) { .project-grid { grid-template-columns: 1fr; } }
 
+/* === Tools === */
+.tools-category { margin-bottom: 28px; }
+.tools-category h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+.tools-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tool-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+.tool-item:hover { border-color: var(--accent); background: var(--accent-light); }
+.tool-item .tool-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.tool-item .tool-name { font-weight: 500; }
+.tool-item .tool-desc { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+@media (max-width: 768px) { .tools-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .tools-grid { grid-template-columns: 1fr; } }
+
 /* === Lightbox === */
 .lightbox {
   visibility: hidden;
@@ -391,6 +413,7 @@ body {
   <!-- Tools -->
   <section class="content-section" :class="{ active: currentSection === 'tools' }" id="sec-tools">
     <div class="section-header"><h2>🛠️ 工具收藏</h2><p>常用工具与资源导航</p></div>
+    <div id="toolsContent"></div>
   </section>
 
   <!-- Guestbook -->
@@ -554,6 +577,58 @@ document.addEventListener('alpine:init', () => {
         '<div class="project-tags">' + tags + '</div>' +
         '<div class="project-links">' + links + '</div>' +
       '</div>';
+    }).join('');
+  }
+})();
+
+// === Tools ===
+(function() {
+  var categories = [
+    { name: '开发工具', items: [
+      { icon: '🐙', name: 'GitHub', desc: '代码托管', url: 'https://github.com' },
+      { icon: '🖥️', name: 'VS Code', desc: '编辑器', url: 'https://code.visualstudio.com' },
+      { icon: '🦀', name: 'Rust Playground', desc: '在线运行', url: 'https://play.rust-lang.org' },
+      { icon: '🐳', name: 'Docker Hub', desc: '容器镜像', url: 'https://hub.docker.com' },
+      { icon: '⚡', name: 'Vite', desc: '构建工具', url: 'https://vitejs.dev' },
+      { icon: '▲', name: 'Vercel', desc: '部署平台', url: 'https://vercel.com' }
+    ]},
+    { name: '学习刷题', items: [
+      { icon: '📘', name: 'LeetCode', desc: '算法刷题', url: 'https://leetcode.cn' },
+      { icon: '🎓', name: '中国大学MOOC', desc: '在线课程', url: 'https://www.icourse163.org' },
+      { icon: '📝', name: 'CS DIY', desc: 'CS学习路线', url: 'https://csdiy.wiki' },
+      { icon: '🔤', name: 'YouGlish', desc: '英语发音', url: 'https://youglish.com' },
+      { icon: '🧮', name: 'VisuAlgo', desc: '算法可视化', url: 'https://visualgo.net/zh' },
+      { icon: '📚', name: 'MDN', desc: 'Web 文档', url: 'https://developer.mozilla.org' }
+    ]},
+    { name: '设计资源', items: [
+      { icon: '🎨', name: 'Dribbble', desc: '设计灵感', url: 'https://dribbble.com' },
+      { icon: '🖼️', name: 'Unsplash', desc: '免费图片', url: 'https://unsplash.com' },
+      { icon: '🌈', name: 'Coolors', desc: '配色方案', url: 'https://coolors.co' },
+      { icon: '📐', name: 'Figma', desc: 'UI 设计', url: 'https://figma.com' },
+      { icon: '✍️', name: 'Google Fonts', desc: '免费字体', url: 'https://fonts.google.com' },
+      { icon: '🎬', name: 'LottieFiles', desc: '动画资源', url: 'https://lottiefiles.com' }
+    ]},
+    { name: '常用工具', items: [
+      { icon: '📋', name: 'JSON Formatter', desc: 'JSON 格式化', url: 'https://jsonformatter.org' },
+      { icon: '🔐', name: 'JWT Debugger', desc: 'Token 解析', url: 'https://jwt.io' },
+      { icon: '⏱️', name: 'Cron Guru', desc: 'Cron 表达式', url: 'https://crontab.guru' },
+      { icon: '📊', name: 'Excalidraw', desc: '手绘图表', url: 'https://excalidraw.com' },
+      { icon: '🔍', name: 'Regex101', desc: '正则测试', url: 'https://regex101.com' },
+      { icon: '🚀', name: 'Carbon', desc: '代码截图', url: 'https://carbon.now.sh' }
+    ]}
+  ];
+
+  var container = document.getElementById('toolsContent');
+  if (container) {
+    container.innerHTML = categories.map(function(cat) {
+      var items = cat.items.map(function(t) {
+        return '<a href="' + t.url + '" target="_blank" class="tool-item">' +
+          '<span class="tool-icon">' + t.icon + '</span>' +
+          '<span class="tool-name">' + t.name + '</span>' +
+          '<span class="tool-desc">' + t.desc + '</span>' +
+        '</a>';
+      }).join('');
+      return '<div class="tools-category"><h3>' + cat.name + '</h3><div class="tools-grid">' + items + '</div></div>';
     }).join('');
   }
 })();
