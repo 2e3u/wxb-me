@@ -495,6 +495,12 @@ body {
   <!-- Guestbook -->
   <section class="content-section" :class="{ active: currentSection === 'guestbook' }" id="sec-guestbook">
     <div class="section-header"><h2>📬 留言板</h2><p>留下你的足迹</p></div>
+    <div id="giscusContainer" style="margin-top: 8px;">
+      <div style="text-align:center;padding:40px;color:var(--text-secondary);">
+        <p style="margin-bottom:12px;">💬 留言板加载中...</p>
+        <p style="font-size:13px;">如果长时间未显示，请确保仓库已配置 <a href="https://giscus.app" target="_blank" style="color:var(--accent);">Giscus</a></p>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -1281,6 +1287,51 @@ function initSnakeGame(canvasId) {
   document.addEventListener('keydown', keyHandler);
   canvas._cleanup = () => { document.removeEventListener('keydown', keyHandler); cancelAnimationFrame(state.frameId); };
 }
+</script>
+
+<!-- Giscus Guestbook -->
+<script>
+(function() {
+  var cfg = window.GISCUS_CONFIG || {};
+  var repo = cfg.repo || '';
+  var repoId = cfg.repoId || '';
+  var category = cfg.category || 'General';
+  var categoryId = cfg.categoryId || '';
+
+  var container = document.getElementById('giscusContainer');
+  if (!repo || !repoId || !categoryId) {
+    if (container) {
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);line-height:2;">' +
+        '<p style="font-size:48px;margin-bottom:16px;">💬</p>' +
+        '<p style="font-size:16px;font-weight:600;margin-bottom:8px;">留言板功能即将上线</p>' +
+        '<p style="font-size:13px;">请将网站代码推送至 GitHub 公开仓库，并在 <a href="https://giscus.app" target="_blank" style="color:var(--accent);">giscus.app</a> 生成配置</p>' +
+        '<p style="font-size:13px;">然后在 index.html 中设置 <code style="background:var(--accent-light);padding:2px 6px;border-radius:4px;">window.GISCUS_CONFIG</code> 即可启用</p>' +
+        '</div>';
+    }
+    return;
+  }
+
+  // Load Giscus
+  var script = document.createElement('script');
+  script.src = 'https://giscus.app/client.js';
+  script.setAttribute('data-repo', repo);
+  script.setAttribute('data-repo-id', repoId);
+  script.setAttribute('data-category', category);
+  script.setAttribute('data-category-id', categoryId);
+  script.setAttribute('data-mapping', 'pathname');
+  script.setAttribute('data-strict', '0');
+  script.setAttribute('data-reactions-enabled', '1');
+  script.setAttribute('data-emit-metadata', '0');
+  script.setAttribute('data-input-position', 'bottom');
+  script.setAttribute('data-theme', document.documentElement.classList.contains('dark') ? 'dark_dimmed' : 'light');
+  script.setAttribute('data-lang', 'zh-CN');
+  script.setAttribute('crossorigin', 'anonymous');
+  script.async = true;
+  if (container) {
+    container.innerHTML = '';
+    container.appendChild(script);
+  }
+})();
 </script>
 </body>
 </html>
