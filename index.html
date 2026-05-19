@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <title>WXB · Personal Hub</title>
 <style>
 /* === CSS Custom Properties (Light Theme) === */
@@ -261,6 +262,27 @@ body {
 @media (max-width: 768px) { .tools-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 480px) { .tools-grid { grid-template-columns: 1fr; } }
 
+/* === Knowledge Graph === */
+.knowledge-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.knowledge-tabs button {
+  padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border);
+  cursor: pointer; font-size: 14px; background: var(--surface); color: var(--text);
+  transition: all 0.15s ease;
+}
+.knowledge-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.knowledge-graph-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+}
+.knowledge-graph-wrap svg { display: block; }
+.knowledge-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--text-secondary); }
+.knowledge-legend span { display: flex; align-items: center; gap: 6px; }
+.knowledge-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.kg-tooltip { pointer-events: none; }
+
 /* === Lightbox === */
 .lightbox {
   visibility: hidden;
@@ -401,8 +423,15 @@ body {
   </section>
 
   <!-- Knowledge -->
-  <section class="content-section" :class="{ active: currentSection === 'knowledge' }" id="sec-knowledge">
+  <section class="content-section" :class="{ active: currentSection === 'knowledge' }" id="sec-knowledge"
+    x-data="{ kgTab: '408' }" x-init="$watch('currentSection', v => { if(v==='knowledge') setTimeout(() => initKnowledgeGraph(kgTab), 100) })">
     <div class="section-header"><h2>🧠 知识图谱</h2><p>408考研 + 四六级英语</p></div>
+    <div class="knowledge-tabs">
+      <button @click="kgTab='408'; initKnowledgeGraph('408')" :class="kgTab==='408'?'active':''">📘 408 考研</button>
+      <button @click="kgTab='cet'; initKnowledgeGraph('cet')" :class="kgTab==='cet'?'active':''">🔤 四六级</button>
+    </div>
+    <div class="knowledge-graph-wrap" id="knowledgeGraph"></div>
+    <div class="knowledge-legend" id="knowledgeLegend"></div>
   </section>
 
   <!-- News -->
@@ -632,6 +661,229 @@ document.addEventListener('alpine:init', () => {
     }).join('');
   }
 })();
+
+// === Knowledge Graph ===
+var knowledgeGraphState = null;
+
+function initKnowledgeGraph(tab) {
+  var container = document.getElementById('knowledgeGraph');
+  var legendEl = document.getElementById('knowledgeLegend');
+  if (!container) return;
+
+  // Clean up previous graph
+  if (knowledgeGraphState) {
+    if (knowledgeGraphState.timer) clearTimeout(knowledgeGraphState.timer);
+    knowledgeGraphState = null;
+  }
+  container.innerHTML = '';
+  if (legendEl) legendEl.innerHTML = '';
+
+  var data = tab === 'cet' ? getCETData() : get408Data();
+
+  if (legendEl) {
+    legendEl.innerHTML = data.categories.map(function(c) {
+      return '<span><span class="dot" style="background:' + c.color + '"></span>' + c.name + '</span>';
+    }).join('');
+  }
+
+  var width = container.clientWidth || 700;
+  var height = 480;
+
+  var svg = d3.select('#knowledgeGraph')
+    .append('svg')
+    .attr('viewBox', [0, 0, width, height])
+    .attr('width', width)
+    .attr('height', height);
+
+  // Zoom
+  var g = svg.append('g');
+  svg.call(d3.zoom().scaleExtent([0.5, 3]).on('zoom', function(e) {
+    g.attr('transform', e.transform);
+  }));
+
+  // Tooltip
+  var tooltip = d3.select('body').append('div')
+    .attr('class', 'kg-tooltip')
+    .style('position', 'absolute')
+    .style('background', 'var(--surface)')
+    .style('color', 'var(--text)')
+    .style('padding', '8px 12px')
+    .style('border-radius', '6px')
+    .style('font-size', '13px')
+    .style('pointer-events', 'none')
+    .style('opacity', 0)
+    .style('box-shadow', '0 4px 16px rgba(0,0,0,0.15)')
+    .style('z-index', '200')
+    .style('border', '1px solid var(--border)');
+
+  // Simulation
+  var sim = d3.forceSimulation(data.nodes)
+    .force('link', d3.forceLink(data.links).id(function(d) { return d.id; }).distance(function(d) { return d.dist || 80; }))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(25));
+
+  // Links
+  var link = g.append('g')
+    .selectAll('line')
+    .data(data.links)
+    .join('line')
+    .attr('stroke', 'var(--border)')
+    .attr('stroke-width', 1.5)
+    .attr('stroke-opacity', 0.6);
+
+  // Nodes
+  var node = g.append('g')
+    .selectAll('g')
+    .data(data.nodes)
+    .join('g')
+    .attr('cursor', 'pointer')
+    .call(d3.drag()
+      .on('start', function(e, d) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', function(e, d) { d.fx = e.x; d.fy = e.y; })
+      .on('end', function(e, d) { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
+    );
+
+  node.append('circle')
+    .attr('r', function(d) { return d.r || 18; })
+    .attr('fill', function(d) { return d.color; })
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 2);
+
+  node.append('text')
+    .text(function(d) { return d.label; })
+    .attr('text-anchor', 'middle')
+    .attr('dy', '0.35em')
+    .attr('font-size', function(d) { return d.fontSize || 11; })
+    .attr('fill', '#fff')
+    .attr('font-weight', 500)
+    .style('pointer-events', 'none');
+
+  node.on('mouseenter', function(e, d) {
+    tooltip.style('opacity', 1).html('<strong>' + data.nodeLabels[d.id] + '</strong><br>' + (d.desc || ''));
+  }).on('mousemove', function(e) {
+    tooltip.style('left', (e.pageX + 12) + 'px').style('top', (e.pageY - 30) + 'px');
+  }).on('mouseleave', function() {
+    tooltip.style('opacity', 0);
+  });
+
+  sim.on('tick', function() {
+    link.attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
+    node.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+  });
+
+  knowledgeGraphState = {
+    sim: sim,
+    tooltip: tooltip,
+    timer: setTimeout(function() { sim.stop(); }, 30000)
+  };
+}
+
+function get408Data() {
+  var colors = { ds: '#2563eb', co: '#7c3aed', os: '#059669', cn: '#d97706' };
+  var nodes = [
+    // Root
+    { id: '408', label: '408', r: 26, color: '#1a1a1a', fontSize: 14 },
+    // Data Structures
+    { id: 'ds', label: '数据结构', r: 22, color: colors.ds, fontSize: 12 },
+    { id: 'ds1', label: '线性表', r: 14, color: colors.ds, desc: '顺序表、链表、栈、队列的定义与操作' },
+    { id: 'ds2', label: '树', r: 14, color: colors.ds, desc: '二叉树遍历、线索二叉树、哈夫曼树、并查集' },
+    { id: 'ds3', label: '图', r: 14, color: colors.ds, desc: 'DFS/BFS、最小生成树、最短路径、拓扑排序' },
+    { id: 'ds4', label: '查找', r: 14, color: colors.ds, desc: '顺序查找、二分查找、B树、散列表、KMP' },
+    { id: 'ds5', label: '排序', r: 14, color: colors.ds, desc: '快排、堆排、归并、基数排序、外部排序' },
+    // Computer Organization
+    { id: 'co', label: '组成原理', r: 22, color: colors.co, fontSize: 12 },
+    { id: 'co1', label: '数据表示', r: 14, color: colors.co, desc: '补码、浮点数IEEE754、ALU、算术逻辑运算' },
+    { id: 'co2', label: '存储器', r: 14, color: colors.co, desc: 'Cache映射、虚拟存储器、TLB、多级存储' },
+    { id: 'co3', label: '指令系统', r: 14, color: colors.co, desc: '寻址方式、CISC/RISC、指令流水线、冒险' },
+    { id: 'co4', label: 'CPU', r: 14, color: colors.co, desc: '数据通路、控制器、微程序、异常与中断' },
+    { id: 'co5', label: '总线与IO', r: 14, color: colors.co, desc: '总线仲裁、DMA、中断方式、程序查询' },
+    // Operating Systems
+    { id: 'os', label: '操作系统', r: 22, color: colors.os, fontSize: 12 },
+    { id: 'os1', label: '进程管理', r: 14, color: colors.os, desc: '进程状态、PV操作、死锁、银行家算法、调度' },
+    { id: 'os2', label: '内存管理', r: 14, color: colors.os, desc: '分页、分段、虚拟内存、页面置换算法' },
+    { id: 'os3', label: '文件系统', r: 14, color: colors.os, desc: 'inode、目录结构、空闲空间管理、磁盘调度' },
+    { id: 'os4', label: 'IO管理', r: 14, color: colors.os, desc: 'SPOOLing、缓冲、设备独立性、磁盘臂调度' },
+    // Computer Networks
+    { id: 'cn', label: '计算机网络', r: 22, color: colors.cn, fontSize: 12 },
+    { id: 'cn1', label: '物理层', r: 14, color: colors.cn, desc: '奈氏准则、香农定理、编码调制、交换技术' },
+    { id: 'cn2', label: '数据链路', r: 14, color: colors.cn, desc: 'CSMA/CD、PPP、MAC地址、交换机与VLAN' },
+    { id: 'cn3', label: '网络层', r: 14, color: colors.cn, desc: 'IP协议、子网划分、CIDR、RIP/OSPF/BGP' },
+    { id: 'cn4', label: '传输层', r: 14, color: colors.cn, desc: 'TCP三次握手、流量控制、拥塞控制、UDP' },
+    { id: 'cn5', label: '应用层', r: 14, color: colors.cn, desc: 'HTTP/DNS/FTP/SMTP、Cookie、CDN' }
+  ];
+
+  var links = [
+    { source: '408', target: 'ds', dist: 60 }, { source: '408', target: 'co', dist: 60 },
+    { source: '408', target: 'os', dist: 60 }, { source: '408', target: 'cn', dist: 60 },
+    { source: 'ds', target: 'ds1' }, { source: 'ds', target: 'ds2' }, { source: 'ds', target: 'ds3' }, { source: 'ds', target: 'ds4' }, { source: 'ds', target: 'ds5' },
+    { source: 'co', target: 'co1' }, { source: 'co', target: 'co2' }, { source: 'co', target: 'co3' }, { source: 'co', target: 'co4' }, { source: 'co', target: 'co5' },
+    { source: 'os', target: 'os1' }, { source: 'os', target: 'os2' }, { source: 'os', target: 'os3' }, { source: 'os', target: 'os4' },
+    { source: 'cn', target: 'cn1' }, { source: 'cn', target: 'cn2' }, { source: 'cn', target: 'cn3' }, { source: 'cn', target: 'cn4' }, { source: 'cn', target: 'cn5' },
+    // Cross links
+    { source: 'os1', target: 'co4', dist: 100 }, { source: 'os2', target: 'co2', dist: 100 },
+    { source: 'os3', target: 'co5', dist: 100 }, { source: 'cn3', target: 'ds3', dist: 100 }
+  ];
+
+  var nodeLabels = {};
+  nodes.forEach(function(n) { nodeLabels[n.id] = n.label; });
+
+  return {
+    nodes: nodes,
+    links: links,
+    nodeLabels: nodeLabels,
+    categories: [
+      { name: '数据结构', color: colors.ds },
+      { name: '组成原理', color: colors.co },
+      { name: '操作系统', color: colors.os },
+      { name: '计算机网络', color: colors.cn }
+    ]
+  };
+}
+
+function getCETData() {
+  var colors = { cet4: '#2563eb', cet6: '#7c3aed' };
+  var nodes = [
+    { id: 'cet', label: 'CET', r: 26, color: '#1a1a1a', fontSize: 14 },
+    { id: 'cet4', label: '四级', r: 22, color: colors.cet4, fontSize: 13 },
+    { id: 'cet4a', label: '听力', r: 15, color: colors.cet4, desc: '短篇新闻、长对话、听力篇章，语速120-140词/分钟' },
+    { id: 'cet4b', label: '阅读', r: 15, color: colors.cet4, desc: '选词填空、长篇阅读匹配、仔细阅读，词汇量约4500' },
+    { id: 'cet4c', label: '写作', r: 15, color: colors.cet4, desc: '议论文/说明文，120-180词，常见话题：教育/科技/环境' },
+    { id: 'cet4d', label: '翻译', r: 15, color: colors.cet4, desc: '汉译英段落翻译，140-160字，涉及中国文化/历史' },
+    { id: 'cet4e', label: '核心词汇', r: 15, color: colors.cet4, desc: '高频词: abandon, absorb, access, account, accurate...共约4500词' },
+    { id: 'cet6', label: '六级', r: 22, color: colors.cet6, fontSize: 13 },
+    { id: 'cet6a', label: '听力', r: 15, color: colors.cet6, desc: '讲座/访谈为主，语速140-160词/分钟，学术性更强' },
+    { id: 'cet6b', label: '阅读', r: 15, color: colors.cet6, desc: '学术文章、评论、议论文，词汇量约6000+' },
+    { id: 'cet6c', label: '写作', r: 15, color: colors.cet6, desc: '议论文/图表作文，150-200词，需要论证与分析能力' },
+    { id: 'cet6d', label: '翻译', r: 15, color: colors.cet6, desc: '汉译英，180-200字，涉及社会热点/科技/文化' },
+    { id: 'cet6e', label: '进阶词汇', r: 15, color: colors.cet6, desc: '高频词: abundant, accommodate, acknowledge, acquire...共约6000词' }
+  ];
+
+  var links = [
+    { source: 'cet', target: 'cet4', dist: 50 }, { source: 'cet', target: 'cet6', dist: 50 },
+    { source: 'cet4', target: 'cet4a' }, { source: 'cet4', target: 'cet4b' }, { source: 'cet4', target: 'cet4c' }, { source: 'cet4', target: 'cet4d' }, { source: 'cet4', target: 'cet4e' },
+    { source: 'cet6', target: 'cet6a' }, { source: 'cet6', target: 'cet6b' }, { source: 'cet6', target: 'cet6c' }, { source: 'cet6', target: 'cet6d' }, { source: 'cet6', target: 'cet6e' },
+    { source: 'cet4a', target: 'cet6a', dist: 80 }, { source: 'cet4b', target: 'cet6b', dist: 80 },
+    { source: 'cet4c', target: 'cet6c', dist: 80 }, { source: 'cet4d', target: 'cet6d', dist: 80 },
+    { source: 'cet4e', target: 'cet6e', dist: 80 }
+  ];
+
+  var nodeLabels = {};
+  nodes.forEach(function(n) { nodeLabels[n.id] = n.label; });
+
+  return {
+    nodes: nodes,
+    links: links,
+    nodeLabels: nodeLabels,
+    categories: [
+      { name: 'CET-4', color: colors.cet4 },
+      { name: 'CET-6', color: colors.cet6 }
+    ]
+  };
+}
 
 function initSnakeGame(canvasId) {
   const canvas = document.getElementById(canvasId);
