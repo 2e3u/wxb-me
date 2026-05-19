@@ -283,6 +283,45 @@ body {
 .knowledge-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .kg-tooltip { pointer-events: none; }
 
+/* === News === */
+.news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.news-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  transition: all 0.15s ease;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.news-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.news-card .news-header { display: flex; align-items: center; gap: 8px; }
+.news-card .news-avatar { width: 24px; height: 24px; border-radius: 50%; }
+.news-card .news-repo { font-weight: 600; font-size: 15px; color: var(--accent); text-decoration: none; }
+.news-card .news-repo:hover { text-decoration: underline; }
+.news-card .news-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; flex:1; display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+.news-card .news-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); align-items: center; }
+.news-meta .news-lang { display: flex; align-items: center; gap: 4px; }
+.news-meta .news-lang-dot { width: 10px; height: 10px; border-radius: 50%; }
+.news-card .news-loading { text-align: center; color: var(--text-secondary); padding: 40px; }
+.news-error { text-align: center; color: #ef4444; padding: 20px; font-size: 14px; }
+.ai-news-section { margin-top: 32px; }
+.ai-news-section h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+.ai-news-list { display: flex; flex-direction: column; gap: 8px; }
+.ai-news-item {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex; align-items: center; gap: 12px;
+  text-decoration: none; color: inherit;
+  transition: all 0.15s ease;
+}
+.ai-news-item:hover { border-color: var(--accent); }
+.ai-news-item .ai-news-date { font-size: 12px; color: var(--text-secondary); flex-shrink: 0; width: 80px; }
+.ai-news-item .ai-news-title { font-size: 14px; font-weight: 500; }
+@media (max-width: 640px) { .news-grid { grid-template-columns: 1fr; } }
+
 /* === Lightbox === */
 .lightbox {
   visibility: hidden;
@@ -435,8 +474,16 @@ body {
   </section>
 
   <!-- News -->
-  <section class="content-section" :class="{ active: currentSection === 'news' }" id="sec-news">
+  <section class="content-section" :class="{ active: currentSection === 'news' }" id="sec-news"
+    x-init="$watch('currentSection', v => { if(v==='news' && !window._newsLoaded) { window._newsLoaded = true; loadGitHubTrending(); } })">
     <div class="section-header"><h2>📰 前沿快讯</h2><p>AI科技 · GitHub Trending</p></div>
+    <div class="news-grid" id="newsGrid">
+      <div class="news-card"><div class="news-loading">加载中...</div></div>
+    </div>
+    <div class="ai-news-section">
+      <h3>🤖 AI 前沿速递</h3>
+      <div class="ai-news-list" id="aiNewsList"></div>
+    </div>
   </section>
 
   <!-- Tools -->
@@ -884,6 +931,73 @@ function getCETData() {
     ]
   };
 }
+
+// === News ===
+window._newsLoaded = false;
+
+var AI_NEWS = [
+  { date: '2026-05', title: 'Anthropic 发布 Claude Opus 4.7，推理能力大幅提升', url: '#' },
+  { date: '2026-05', title: 'OpenAI 开源轻量级模型，支持边缘设备本地推理', url: '#' },
+  { date: '2026-04', title: 'Google DeepMind 推出新一代蛋白质结构预测模型', url: '#' },
+  { date: '2026-04', title: 'Meta 开源 Llama 4 系列，多模态能力全面升级', url: '#' },
+  { date: '2026-03', title: 'WebAssembly GC 正式落地，浏览器运行效率再提升', url: '#' },
+  { date: '2026-03', title: 'Rust 语言在 Linux 内核中的应用持续扩大', url: '#' }
+];
+
+function loadGitHubTrending() {
+  var grid = document.getElementById('newsGrid');
+  if (!grid) return;
+
+  // Use GitHub search API: repos with most stars created in the last 7 days
+  var since = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+  fetch('https://api.github.com/search/repositories?q=created:>=' + since + '&sort=stars&order=desc&per_page=6')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.items || !data.items.length) {
+        grid.innerHTML = '<div class="news-error">暂无数据</div>';
+        return;
+      }
+      grid.innerHTML = data.items.map(function(repo) {
+        return '<div class="news-card">' +
+          '<div class="news-header">' +
+            '<img class="news-avatar" src="' + repo.owner.avatar_url + '&s=48" alt="" loading="lazy">' +
+            '<a class="news-repo" href="' + repo.html_url + '" target="_blank">' + repo.full_name + '</a>' +
+          '</div>' +
+          '<p class="news-desc">' + (repo.description || '暂无描述') + '</p>' +
+          '<div class="news-meta">' +
+            '<span>⭐ ' + formatStarCount(repo.stargazers_count) + '</span>' +
+            '<span>🔀 ' + repo.forks_count + '</span>' +
+            (repo.language ? '<span class="news-lang"><span class="news-lang-dot" style="background:' + langColor(repo.language) + '"></span>' + repo.language + '</span>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function() {
+      grid.innerHTML = '<div class="news-error">加载失败，请稍后重试</div>';
+    });
+}
+
+function formatStarCount(n) {
+  if (n >= 10000) return (n / 1000).toFixed(1) + 'k';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return n.toString();
+}
+
+function langColor(lang) {
+  var map = { 'JavaScript': '#f1e05a', 'TypeScript': '#3178c6', 'Python': '#3572A5', 'Rust': '#dea584', 'Go': '#00ADD8', 'Java': '#b07219', 'C++': '#f34b7d', 'C': '#555555', 'Ruby': '#701516', 'Swift': '#F05138', 'Kotlin': '#A97BFF' };
+  return map[lang] || '#8b8b8b';
+}
+
+(function renderAINews() {
+  var list = document.getElementById('aiNewsList');
+  if (!list) return;
+  list.innerHTML = AI_NEWS.map(function(n) {
+    return '<a href="' + n.url + '" class="ai-news-item">' +
+      '<span class="ai-news-date">' + n.date + '</span>' +
+      '<span class="ai-news-title">' + n.title + '</span>' +
+    '</a>';
+  }).join('');
+})();
 
 function initSnakeGame(canvasId) {
   const canvas = document.getElementById(canvasId);
