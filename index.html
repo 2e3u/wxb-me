@@ -197,7 +197,7 @@ body {
 .lightbox-next { right: 8px; }
 </style>
 </head>
-<body>
+<body x-data="app">
 
 <!-- Hamburger -->
 <button class="hamburger" id="hamburger" aria-label="Menu">
@@ -208,7 +208,7 @@ body {
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- Sidebar -->
-<aside class="sidebar" id="sidebar" x-data>
+<aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">WXB</div>
   <nav class="sidebar-nav">
     <a href="#" @click.prevent="currentSection='home'" :class="currentSection==='home'?'active':''">
@@ -242,7 +242,7 @@ body {
 </aside>
 
 <!-- Main Content -->
-<main class="main" x-data="app">
+<main class="main">
   <!-- Home -->
   <section class="content-section" :class="{ active: currentSection === 'home' }" id="sec-home">
     <div class="section-header"><h2>🏠 首页</h2><p>Welcome to my personal hub</p></div>
