@@ -1,1520 +1,255 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://d3js.org/d3.v7.min.js"></script>
-<title>WXB · Personal Hub</title>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Echoes Atelier</title>
 <style>
-/* === CSS Custom Properties (Light Theme) === */
-:root {
-  --bg: #fafaf8;
-  --surface: #ffffff;
-  --text: #1e1e1e;
-  --text-secondary: #78716c;
-  --border: #e7e5e4;
-  --accent: #3b82f6;
-  --accent-warm: #f59e0b;
-  --accent-light: #eff6ff;
-  --accent-warm-light: #fffbeb;
-  --sidebar-bg: #f5f5f4;
-  --sidebar-width: 232px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --transition: 0.2s ease;
-}
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;600;700;900&family=DM+Mono:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&display=swap');
+:root{--ink:#0f0f0f;--paper:#f6f2e8;--red:#b83830;--grey:#8a8a82}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--paper)}
+body{font-family:'Noto Serif SC','Songti SC',serif;color:var(--ink);-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E");background-size:200px;mix-blend-mode:multiply}
+#scroll{display:flex;height:100vh;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none}
+#scroll::-webkit-scrollbar{display:none}
+.panel{flex:0 0 100vw;height:100vh;scroll-snap-align:start;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.panel:nth-child(even){background:rgba(0,0,0,.012)}
+#inkCanvas{position:fixed;inset:0;z-index:1;pointer-events:none}
+#mountainCanvas{position:fixed;bottom:0;left:0;z-index:3;pointer-events:none}
+#nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100;display:flex;gap:6px;align-items:center;background:rgba(246,242,232,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:8px 16px;border-radius:20px;border:1px solid rgba(0,0,0,.06)}
+#nav button{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--grey);background:none;border:none;cursor:pointer;padding:4px 10px;border-radius:12px;transition:all .4s;text-transform:uppercase}
+#nav button.active{color:var(--ink);background:rgba(0,0,0,.04);font-weight:700}
+#nav button:hover:not(.active){color:var(--ink)}
 
-/* === Dark Theme === */
-.dark {
-  --bg: #0c0a09;
-  --surface: #1c1917;
-  --text: #e7e5e4;
-  --text-secondary: #a8a29e;
-  --border: #292524;
-  --accent: #60a5fa;
-  --accent-warm: #fbbf24;
-  --accent-light: #1e293b;
-  --accent-warm-light: #292524;
-  --sidebar-bg: #1c1917;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,0.4);
-}
+#panelIdx{position:fixed;top:20px;right:24px;z-index:100;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;color:var(--grey);opacity:.5}
 
-/* === Reset & Base === */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  display: flex;
-  min-height: 100vh;
-  transition: background var(--transition), color var(--transition);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-body::before {
-  content: ''; position: fixed; inset: 0;
-  background: radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-light), transparent);
-  pointer-events: none; z-index: -1;
-  opacity: 0.5;
-}
-.dark body::before { opacity: 0.15; }
+.hero-zan{font-size:clamp(220px,28vw,460px);font-weight:900;line-height:.75;color:var(--ink);letter-spacing:-.04em;display:block;filter:drop-shadow(8px 12px 0px rgba(15,15,15,.06));transition:transform .08s ease-out,filter .3s;animation:heroBreathe 4s ease-in-out infinite}
+@keyframes heroBreathe{0%,100%{filter:drop-shadow(8px 12px 0px rgba(15,15,15,.06))}50%{filter:drop-shadow(14px 18px 0px rgba(15,15,15,.12))}}
+.hero-xiang{font-size:clamp(130px,18vw,280px);font-weight:200;color:transparent;-webkit-text-stroke:2px var(--ink);letter-spacing:.25em;margin-top:-24px;display:block;transition:transform .1s ease-out;animation:xiangFloat 5s ease-in-out infinite}
+@keyframes xiangFloat{0%,100%{letter-spacing:.25em}50%{letter-spacing:.35em}}
+.hero-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5em;color:var(--grey);margin-top:32px;text-transform:uppercase;display:block}
 
-/* === Sidebar === */
-.sidebar {
-  position: fixed;
-  left: 0; top: 0; bottom: 0;
-  width: var(--sidebar-width);
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  padding: 28px 16px 20px;
-  z-index: 50;
-  transition: transform 0.3s ease, background var(--transition);
-}
-.sidebar-logo {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text);
-  margin-bottom: 36px;
-  letter-spacing: -0.5px;
-  padding: 0 12px;
-  display: flex; align-items: center; gap: 8px;
-}
-.sidebar-logo::before {
-  content: ''; width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-light);
-  flex-shrink: 0;
-}
-.sidebar-nav { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.sidebar-nav a {
-  text-decoration: none;
-  color: var(--text-secondary);
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all var(--transition);
-  display: flex; align-items: center; gap: 10px;
-  position: relative;
-}
-.sidebar-nav a:hover { background: var(--surface); color: var(--text); }
-.sidebar-nav a.active {
-  background: var(--surface);
-  color: var(--accent);
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
-}
-.sidebar-nav a.active::before {
-  content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
-  width: 3px; border-radius: 0 2px 2px 0;
-  background: var(--accent);
-}
-.sidebar-nav a .nav-icon { font-size: 17px; width: 24px; text-align: center; line-height: 1; }
+.intro-wrap{display:grid;grid-template-columns:1fr 1fr;gap:100px;max-width:1100px;padding:0 80px;align-items:end}
+.intro-wrap h2{font-size:clamp(44px,7vw,80px);font-weight:700;line-height:1.05;letter-spacing:.02em;font-family:'Playfair Display','Noto Serif SC',serif}
+.intro-wrap h2 .cn{font-family:'Noto Serif SC',serif;display:block;font-size:clamp(28px,4vw,48px);font-weight:300;color:var(--grey);margin-top:4px}
+.intro-wrap p{font-size:15px;color:var(--grey);line-height:2.1;max-width:360px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:48px}
+.stat .val{font-family:'DM Mono',monospace;font-size:72px;font-weight:300;color:var(--red);line-height:1}
+.stat .lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--grey);margin-top:10px;text-transform:uppercase}
+@media(max-width:768px){.intro-wrap{grid-template-columns:1fr;gap:48px;padding:0 40px}}
 
-/* Theme toggle */
-.theme-toggle {
-  margin-top: auto;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  display: flex; align-items: center; gap: 8px;
-  transition: all var(--transition);
-  box-shadow: var(--shadow-sm);
-}
-.theme-toggle:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.proj-wrap{max-width:1000px;padding:0 80px;width:100%}
+.proj-head{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5em;color:var(--grey);text-align:center;margin-bottom:48px;text-transform:uppercase}
+.proj-item{display:flex;align-items:center;gap:28px;padding:26px 0;border-top:1px solid rgba(0,0,0,.06);transition:all .5s cubic-bezier(.16,1,.3,1);position:relative}
+.proj-item:hover{padding-left:32px;transform:scale(1.01);background:linear-gradient(90deg,rgba(0,0,0,.015),transparent)}
+.proj-item::after{content:'';position:absolute;left:0;bottom:-1px;width:0;height:1px;background:var(--ink);transition:width .5s}
+.proj-item:hover::after{width:100%}
+.proj-item:first-child{border-top:2px solid var(--ink);animation:glow 3s ease-in-out infinite}
+@keyframes glow{0%,100%{border-top-color:var(--ink)}50%{border-top-color:var(--red)}}
+.proj-item .ptag{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.2em;color:var(--red);text-transform:uppercase;min-width:70px}
+.proj-item:first-child .ptag{color:var(--ink)}
+.proj-item h3{font-size:20px;font-weight:600;letter-spacing:.04em;min-width:160px}
+.proj-item p{font-size:13px;color:var(--grey);flex:1;line-height:1.7}
+.proj-item .plink{font-family:'DM Mono',monospace;font-size:14px;color:var(--red);opacity:0;transform:translateX(-12px);transition:all .4s;text-decoration:none;font-weight:700}
+.proj-item:hover .plink{opacity:1;transform:translateX(0)}
+@media(max-width:768px){.proj-wrap{padding:0 40px}.proj-item{flex-wrap:wrap;gap:8px}.proj-item h3{min-width:auto}}
 
-/* === Main Content === */
-.main {
-  margin-left: var(--sidebar-width);
-  flex: 1;
-  padding: 48px 56px;
-  min-height: 100vh;
-  max-width: 1100px;
-  transition: margin-left 0.3s ease;
-}
-.content-section { display: none; }
-.content-section.active { display: block; animation: fadeInUp 0.4s ease; }
+.games-wrap{display:flex;gap:1px;max-width:700px;padding:0 80px}
+.game-box{flex:1;text-align:center;padding:60px 40px;cursor:pointer;transition:all .6s cubic-bezier(.16,1,.3,1);position:relative;overflow:hidden}
+.game-box::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at center,rgba(0,0,0,.04),transparent);opacity:0;transition:opacity .6s}
+.game-box:hover{transform:scale(1.03);background:rgba(0,0,0,.02)}
+.game-box:hover::before{opacity:1}
+.game-box .gi{font-size:110px;transition:all .6s cubic-bezier(.16,1,.3,1);display:block}
+.game-box:hover .gi{transform:scale(1.2) rotate(-8deg);filter:drop-shadow(4px 8px 12px rgba(0,0,0,.1))}
+.game-box h3{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;letter-spacing:.04em;margin-top:24px;transition:transform .4s}
+.game-box:hover h3{transform:translateY(-4px)}
+.game-box .sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--grey);letter-spacing:.15em;margin-top:10px;text-transform:uppercase}
 
-/* === Section Header === */
-.section-header { margin-bottom: 36px; }
-.section-header h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.3px; }
-.section-header p { color: var(--text-secondary); margin-top: 6px; font-size: 14px; font-weight: 500; }
+.photo-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:0 80px;max-width:1200px}
+.photo-cell{aspect-ratio:1;overflow:hidden;cursor:pointer;position:relative;background:rgba(0,0,0,.02);transition:transform .5s cubic-bezier(.16,1,.3,1);z-index:1}
+.photo-cell:hover{transform:scale(1.08);z-index:10;box-shadow:0 16px 48px rgba(0,0,0,.15)}
+.photo-cell img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.05);transition:all .7s}
+.photo-cell:hover img{filter:grayscale(0)}
+.photo-cell::after{content:attr(data-l);position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,.5));color:#fff;font-size:10px;font-weight:600;font-family:'Noto Serif SC',serif;letter-spacing:.04em;opacity:0;transition:opacity .4s}
+.photo-cell:hover::after{opacity:1}
+@media(max-width:900px){.photo-grid{grid-template-columns:repeat(3,1fr);padding:0 40px}}
 
-/* === Hero (Home) === */
-.hero {
-  display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap;
-  padding: 16px 0 40px;
-}
-.hero-avatar { flex-shrink: 0; }
-.hero-avatar-inner {
-  width: 112px; height: 112px; border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #f59e0b 100%);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 40px; color: #fff; font-weight: 800; letter-spacing: -0.5px;
-  box-shadow: 0 0 0 4px var(--accent-light), 0 8px 32px rgba(59,130,246,0.15);
-  transition: box-shadow 0.3s ease;
-}
-.hero-avatar-inner:hover {
-  box-shadow: 0 0 0 4px var(--accent-light), 0 12px 40px rgba(59,130,246,0.25);
-}
-.hero-body { flex: 1; min-width: 280px; padding-top: 4px; }
-.hero-title { font-size: 36px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.5px; line-height: 1.2; }
-.hero-name { background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.hero-subtitle { color: var(--text-secondary); font-size: 15px; margin-bottom: 16px; font-weight: 500; }
-.hero-bio { color: var(--text-secondary); line-height: 1.75; margin-bottom: 24px; font-size: 15px; max-width: 520px; }
-.hero-stats { display: flex; gap: 32px; margin-bottom: 24px; }
-.hero-stat { display: flex; flex-direction: column; gap: 2px; }
-.hero-stat-num { font-size: 28px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
-.hero-stat-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-.hero-links { display: flex; gap: 12px; }
+.codex-wrap{max-width:800px;padding:0 80px;width:100%;text-align:center}
+.codex-head{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5em;color:var(--grey);margin-bottom:40px;text-transform:uppercase}
+.codex-tabs{display:flex;gap:1px;margin-bottom:24px;justify-content:center}
+.codex-tab{font-family:var(--font-mono,'DM Mono',monospace);font-size:11px;letter-spacing:.15em;padding:10px 24px;cursor:pointer;background:none;border:1px solid rgba(0,0,0,.08);color:var(--grey);transition:all .4s;text-transform:uppercase}
+.codex-tab.on{color:var(--ink);border-color:var(--ink);background:rgba(0,0,0,.02)}
+.codex-tab:hover:not(.on){border-color:rgba(0,0,0,.15)}
+#kgBox{border:1px solid rgba(0,0,0,.06);height:360px;overflow:hidden;background:rgba(0,0,0,.01)}
+#kgBox svg{display:block}
+#kgLegend{display:flex;gap:20px;justify-content:center;margin-top:16px;font-family:'DM Mono',monospace;font-size:9px;color:var(--grey);letter-spacing:.1em}
+@media(max-width:768px){.codex-wrap{padding:0 40px}}
 
-/* === Buttons === */
-.btn {
-  padding: 10px 20px; border-radius: 8px; text-decoration: none;
-  font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;
-  transition: all var(--transition); cursor: pointer;
-  letter-spacing: 0.2px;
-}
-.btn-outline {
-  background: var(--surface); border: 1px solid var(--border);
-  color: var(--text); box-shadow: var(--shadow-sm);
-}
-.btn-outline:hover { border-color: var(--accent); box-shadow: var(--shadow); color: var(--accent); }
-.btn-primary {
-  background: var(--accent); border: none; color: #fff;
-  box-shadow: 0 2px 8px rgba(59,130,246,0.25);
-}
-.btn-primary:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.35); transform: translateY(-1px); }
+.tools-wrap{max-width:900px;padding:0 80px;width:100%}
+.tools-head{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5em;color:var(--grey);text-align:center;margin-bottom:40px;text-transform:uppercase}
+.tool-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-bottom:1px}
+.tool-item{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 16px;text-decoration:none;color:var(--ink);border:1px solid rgba(0,0,0,.04);transition:all .4s;text-align:center}
+.tool-item:hover{background:rgba(0,0,0,.015);border-color:rgba(0,0,0,.1);transform:translateY(-1px)}
+.tool-item .ti{font-size:24px}
+.tool-item .tn{font-size:12px;font-weight:500;letter-spacing:.04em}
+.tool-item .td{font-family:'DM Mono',monospace;font-size:8px;color:var(--grey);letter-spacing:.1em;text-transform:uppercase}
+@media(max-width:768px){.tool-row{grid-template-columns:1fr 1fr}.tools-wrap{padding:0 40px}}
 
-/* === Cards (generic) === */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition);
-}
-.card:hover { box-shadow: var(--shadow-md); }
+.outro-wrap{text-align:center}
+.outro-wrap h2{font-size:clamp(52px,8vw,96px);font-weight:700;letter-spacing:.02em;line-height:.95}
+.outro-wrap .mega{display:block;font-size:clamp(140px,20vw,320px);font-weight:900;color:transparent;-webkit-text-stroke:2px var(--ink);line-height:.75;margin-top:4px;animation:megaPulse 4s ease-in-out infinite}
+@keyframes megaPulse{0%,100%{-webkit-text-stroke-color:var(--ink)}50%{-webkit-text-stroke-color:var(--red)}}
+.outro-wrap p{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.3em;color:var(--grey);margin-top:36px;text-transform:uppercase}
+.outro-wrap a{color:var(--ink);text-underline-offset:6px}
 
-/* === Hamburger === */
-.hamburger {
-  display: none;
-  position: fixed;
-  top: 14px; left: 14px;
-  z-index: 60;
-  width: 42px; height: 42px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 10px 9px;
-  box-shadow: var(--shadow);
-  transition: all var(--transition);
-}
-.hamburger:hover { border-color: var(--accent); }
-.hamburger span {
-  display: block;
-  width: 100%; height: 2px;
-  background: var(--text);
-  border-radius: 2px;
-  transition: all 0.25s ease;
-}
+.arrow{position:absolute;right:28px;top:50%;transform:translateY(-50%);font-size:22px;color:rgba(0,0,0,.08);pointer-events:none;animation:arr 2s ease-in-out infinite;font-family:'DM Mono',monospace}
+.panel:last-child .arrow{display:none}
+@keyframes arr{0%,100%{opacity:.15;transform:translateY(-50%) translateX(0)}50%{opacity:.5;transform:translateY(-50%) translateX(10px)}}
 
-/* === Mobile Overlay === */
-.sidebar-overlay {
-  visibility: hidden;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.35);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  z-index: 45;
-  opacity: 0;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.sidebar-overlay.show { visibility: visible; opacity: 1; }
+#lb{visibility:hidden;opacity:0;position:fixed;inset:0;z-index:300;background:rgba(15,15,15,.98);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .5s}
+#lb.on{visibility:visible;opacity:1}
+#lb img{max-width:90vw;max-height:85vh;cursor:default;filter:grayscale(0)!important}
+#lb .x{position:absolute;top:20px;right:28px;font-size:20px;color:#fff;cursor:pointer;font-family:'DM Mono',monospace}
+#lb .nav{position:absolute;top:50%;font-size:40px;color:#fff;padding:20px;cursor:pointer;font-family:'DM Mono',monospace;transform:translateY(-50%)}
+#lb .prev{left:20px}#lb .next{right:20px}
 
-/* === Responsive === */
-@media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
-  .main { margin-left: 0; padding: 24px 18px; }
-  .hamburger { display: flex; }
-  .hero { gap: 24px; }
-  .hero-avatar-inner { width: 80px; height: 80px; font-size: 28px; }
-  .hero-title { font-size: 26px; }
-  .hero-stats { gap: 24px; }
-}
+.fade-in{opacity:0;transform:translateY(40px);transition:all .8s cubic-bezier(.16,1,.3,1)}
+.fade-in.show{opacity:1;transform:translateY(0)}
+.fade-in.d1{transition-delay:.08s}.fade-in.d2{transition-delay:.16s}.fade-in.d3{transition-delay:.24s}.fade-in.d4{transition-delay:.32s}
+</style></head>
+<body>
 
-/* === Animations === */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.reveal { opacity: 0; transform: translateY(20px); }
-.reveal.visible { animation: fadeInUp 0.5s ease forwards; }
-.reveal-delay-1 { animation-delay: 0.05s; }
-.reveal-delay-2 { animation-delay: 0.1s; }
-.reveal-delay-3 { animation-delay: 0.15s; }
-.reveal-delay-4 { animation-delay: 0.2s; }
-.reveal-delay-5 { animation-delay: 0.25s; }
+<div id="scroll">
 
-/* === Utilities === */
-.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 1024px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+<!-- 0: HERO -->
+<div class="panel" id="p0"><div style="text-align:center"><span class="hero-zan" id="zan">残</span><span class="hero-xiang" id="xiang">響</span><span class="hero-tag">Kingdom Echoes · Dark Fantasy</span></div><div class="arrow">→</div></div>
 
-/* === Photo Grid === */
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-.photo-card {
-  position: relative;
-  border-radius: var(--radius);
-  overflow: hidden;
-  cursor: pointer;
-  aspect-ratio: 4/3;
-  background: var(--border);
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.photo-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-.photo-card img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.4s ease;
-}
-.photo-card:hover img { transform: scale(1.08); }
-.photo-card .photo-overlay {
-  position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 40%);
-  opacity: 0; transition: opacity 0.25s ease;
-  display: flex; align-items: flex-end; padding: 14px;
-}
-.photo-card:hover .photo-overlay { opacity: 1; }
-.photo-overlay span {
-  color: #fff; font-size: 13px; font-weight: 600; letter-spacing: 0.2px;
-}
-@media (max-width: 768px) { .photo-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px) { .photo-grid { grid-template-columns: 1fr; } }
+<!-- 1: INTRO -->
+<div class="panel" id="p1"><div class="intro-wrap"><h2 class="fade-in">Echoes<span class="cn">残响工坊</span></h2><div class="fade-in d2"><p>暗黑童话的像素世界。无限地图 · 八种群落 · 手工精灵。每个像素都带着锈蚀王国的记忆。</p><div class="stat-grid"><div class="stat"><div class="val">01</div><div class="lbl">Game</div></div><div class="stat"><div class="val">08</div><div class="lbl">Biomes</div></div><div class="stat"><div class="val">∞</div><div class="lbl">World</div></div><div class="stat"><div class="val">'26</div><div class="lbl">Est.</div></div></div></div></div><div class="arrow">→</div></div>
 
-/* === Project Cards === */
-.project-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-.project-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.project-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-.project-card h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
-.project-card p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; flex: 1; }
-.project-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.project-tags span {
-  font-size: 11px; padding: 4px 10px; border-radius: 20px;
-  background: var(--accent-light); color: var(--accent); font-weight: 500;
-}
-.project-links { display: flex; gap: 16px; }
-.project-links a {
-  font-size: 13px; text-decoration: none; color: var(--accent);
-  display: flex; align-items: center; gap: 5px; font-weight: 500;
-  transition: opacity 0.15s;
-}
-.project-links a:hover { opacity: 0.7; }
-@media (max-width: 640px) { .project-grid { grid-template-columns: 1fr; } }
+<!-- 2: PROJECTS -->
+<div class="panel" id="p2"><div class="proj-wrap"><div class="proj-head fade-in">Quest Log</div><div class="fade-in d1" id="projList"></div></div><div class="arrow">→</div></div>
 
-/* === Tools === */
-.tools-category { margin-bottom: 28px; }
-.tools-category h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--text); letter-spacing: -0.2px; }
-.tools-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.tool-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  color: var(--text);
-  font-size: 14px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.15s ease;
-}
-.tool-item:hover { border-color: var(--accent); background: var(--accent-light); box-shadow: var(--shadow); transform: translateY(-1px); }
-.tool-item .tool-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
-.tool-item .tool-name { font-weight: 500; }
-.tool-item .tool-desc { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
-@media (max-width: 768px) { .tools-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px) { .tools-grid { grid-template-columns: 1fr; } }
+<!-- 3: GAMES -->
+<div class="panel" id="p3"><div class="games-wrap"><div class="game-box fade-in" onclick="showGame('snake')"><span class="gi">🐍</span><h3>Snake</h3><div class="sub">贪吃蛇 · 可玩</div></div><div class="game-box fade-in d2" onclick="showGame('pacman')"><span class="gi">👻</span><h3>Pac-Man</h3><div class="sub">吃豆人 · wasd</div></div></div><div class="arrow">→</div></div>
 
-/* === Knowledge Graph === */
-.knowledge-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.knowledge-tabs button {
-  padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border);
-  cursor: pointer; font-size: 14px; font-weight: 500; background: var(--surface); color: var(--text);
-  transition: all 0.15s ease; box-shadow: var(--shadow-sm);
-}
-.knowledge-tabs button:hover { border-color: var(--accent); }
-.knowledge-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 2px 8px rgba(59,130,246,0.25); }
-.knowledge-graph-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  position: relative;
-  box-shadow: var(--shadow-sm);
-}
-.knowledge-graph-wrap svg { display: block; }
-.knowledge-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; color: var(--text-secondary); }
-.knowledge-legend span { display: flex; align-items: center; gap: 6px; }
-.knowledge-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.kg-tooltip { pointer-events: none; }
+<!-- 4: PHOTOS -->
+<div class="panel" id="p4"><div class="photo-grid" id="photoWall"></div><div class="arrow">→</div></div>
 
-/* === News === */
-.news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.news-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 18px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.15s ease;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.news-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.news-card .news-header { display: flex; align-items: center; gap: 8px; }
-.news-card .news-avatar { width: 22px; height: 22px; border-radius: 50%; }
-.news-card .news-repo { font-weight: 600; font-size: 14px; color: var(--accent); text-decoration: none; }
-.news-card .news-repo:hover { text-decoration: underline; }
-.news-card .news-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; flex:1; display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
-.news-card .news-meta { display: flex; gap: 14px; font-size: 12px; color: var(--text-secondary); align-items: center; }
-.news-meta .news-lang { display: flex; align-items: center; gap: 4px; }
-.news-meta .news-lang-dot { width: 10px; height: 10px; border-radius: 50%; }
-.news-card .news-loading { text-align: center; color: var(--text-secondary); padding: 40px; }
-.news-error { text-align: center; color: #ef4444; padding: 20px; font-size: 14px; }
-.ai-news-section { margin-top: 36px; }
-.ai-news-section h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.2px; }
-.ai-news-list { display: flex; flex-direction: column; gap: 6px; }
-.ai-news-item {
-  padding: 14px 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  display: flex; align-items: center; gap: 12px;
-  text-decoration: none; color: inherit;
-  transition: all 0.15s ease;
-  box-shadow: var(--shadow-sm);
-}
-.ai-news-item:hover { border-color: var(--accent); box-shadow: var(--shadow); }
-.ai-news-item .ai-news-date { font-size: 12px; color: var(--text-secondary); flex-shrink: 0; width: 84px; font-weight: 500; }
-.ai-news-item .ai-news-title { font-size: 14px; font-weight: 500; }
-@media (max-width: 640px) { .news-grid { grid-template-columns: 1fr; } }
+<!-- 5: CODEX -->
+<div class="panel" id="p5"><div class="codex-wrap"><div class="codex-head fade-in">Codex · 知识图谱</div><div class="codex-tabs fade-in d1"><button class="codex-tab on" onclick="switchKG('408',this)">计算机 408</button><button class="codex-tab" onclick="switchKG('cet',this)">英语 CET</button></div><div id="kgBox" class="fade-in d2"></div><div id="kgLegend"></div></div><div class="arrow">→</div></div>
 
-/* === Game Controls === */
-.game-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-.game-tab {
-  padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border);
-  cursor: pointer; font-size: 14px; font-weight: 500;
-  background: var(--surface); color: var(--text);
-  transition: all 0.15s ease;
-  box-shadow: var(--shadow-sm);
-  font-family: inherit;
-}
-.game-tab:hover { border-color: var(--accent); }
-.game-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 2px 8px rgba(59,130,246,0.25); }
-.game-tab:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
-.game-tab:disabled:hover { border-color: var(--border); }
-.game-canvas-wrap { display: flex; justify-content: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; box-shadow: var(--shadow-sm); }
+<!-- 6: TOOLS -->
+<div class="panel" id="p6"><div class="tools-wrap"><div class="tools-head fade-in">Workshop · 工具箱</div><div class="fade-in d1" id="toolsBox"></div></div><div class="arrow">→</div></div>
 
-/* === Lightbox === */
-.lightbox {
-  visibility: hidden;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.94);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 100;
-  align-items: center; justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  display: flex;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.lightbox.open { visibility: visible; opacity: 1; }
-.lightbox img { max-width: 90vw; max-height: 85vh; border-radius: 6px; cursor: default; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
-.lightbox-close {
-  position: absolute; top: 20px; right: 28px;
-  font-size: 28px; color: #fff; cursor: pointer;
-  background: rgba(255,255,255,0.08); border: none;
-  width: 40px; height: 40px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.lightbox-close:hover { background: rgba(255,255,255,0.18); }
-.lightbox-nav {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  font-size: 40px; color: #fff; cursor: pointer;
-  background: rgba(255,255,255,0.08); border: none;
-  width: 48px; height: 48px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-}
-.lightbox-nav:hover { background: rgba(255,255,255,0.18); }
-.lightbox-prev { left: 16px; }
-.lightbox-next { right: 16px; }
-</style>
-</head>
-<body x-data="app">
+<!-- 7: OUTRO -->
+<div class="panel" id="p7"><div class="outro-wrap"><h2>残响工坊<span class="mega">墨</span></h2><p>小北 · 2026<br><br><a href="https://github.com/2e3u/kingdom-echoes" target="_blank">github.com/2e3u/kingdom-echoes</a><br><br>暗黑童话的余烬中<br>追寻创作者的微光</p></div></div>
 
-<!-- Hamburger -->
-<button class="hamburger" id="hamburger" aria-label="Menu">
-  <span></span><span></span><span></span>
-</button>
-
-<!-- Sidebar overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<!-- Sidebar -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-logo">WXB</div>
-  <nav class="sidebar-nav">
-    <a href="#" @click.prevent="currentSection='home'" :class="currentSection==='home'?'active':''">
-      <span class="nav-icon">🏠</span> 首页
-    </a>
-    <a href="#" @click.prevent="currentSection='games'" :class="currentSection==='games'?'active':''">
-      <span class="nav-icon">🎮</span> 游戏厅
-    </a>
-    <a href="#" @click.prevent="currentSection='photos'" :class="currentSection==='photos'?'active':''">
-      <span class="nav-icon">📷</span> 摄影集
-    </a>
-    <a href="#" @click.prevent="currentSection='projects'" :class="currentSection==='projects'?'active':''">
-      <span class="nav-icon">💻</span> 项目作品
-    </a>
-    <a href="#" @click.prevent="currentSection='knowledge'" :class="currentSection==='knowledge'?'active':''">
-      <span class="nav-icon">🧠</span> 知识图谱
-    </a>
-    <a href="#" @click.prevent="currentSection='news'" :class="currentSection==='news'?'active':''">
-      <span class="nav-icon">📰</span> 前沿快讯
-    </a>
-    <a href="#" @click.prevent="currentSection='tools'" :class="currentSection==='tools'?'active':''">
-      <span class="nav-icon">🛠️</span> 工具收藏
-    </a>
-    <a href="#" @click.prevent="currentSection='guestbook'" :class="currentSection==='guestbook'?'active':''">
-      <span class="nav-icon">📬</span> 留言板
-    </a>
-  </nav>
-  <button class="theme-toggle" @click="toggleTheme()">
-    <span x-text="themeIcon">🌙</span> <span x-text="themeLabel">暗黑模式</span>
-  </button>
-</aside>
-
-<!-- Main Content -->
-<main class="main">
-  <!-- Home -->
-  <section class="content-section" :class="{ active: currentSection === 'home' }" id="sec-home">
-    <div class="hero">
-      <div class="hero-avatar">
-        <div class="hero-avatar-inner">WXB</div>
-      </div>
-      <div class="hero-body">
-        <h1 class="hero-title">Hi, I'm <span class="hero-name">WXB</span></h1>
-        <p class="hero-subtitle">计算机专业大二学生 / 徒步爱好者 / 摄影新手</p>
-        <p class="hero-bio">
-          目前在备战考研408，喜欢探索有趣的编程项目，
-          周末常去北京周边徒步，拍下路上的风景。
-          希望通过这个网站记录学习、分享生活。
-        </p>
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <span class="hero-stat-num">12</span>
-            <span class="hero-stat-label">Commits</span>
-          </div>
-          <div class="hero-stat">
-            <span class="hero-stat-num">8</span>
-            <span class="hero-stat-label">Modules</span>
-          </div>
-          <div class="hero-stat">
-            <span class="hero-stat-num">6</span>
-            <span class="hero-stat-label">Projects</span>
-          </div>
-        </div>
-        <div class="hero-links">
-          <a href="https://github.com/" target="_blank" class="btn btn-outline">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-            GitHub
-          </a>
-          <a href="mailto:wxb@wxb.me" class="btn btn-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg>
-            Email Me
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Games -->
-  <section class="content-section" :class="{ active: currentSection === 'games' }" id="sec-games"
-    x-data="{ currentGame: 'snake' }" x-init="$watch('currentSection', v => { if (v==='games') setTimeout(() => initSnakeGame('snakeCanvas'), 100) })">
-    <div class="section-header reveal"><h2>🎮 游戏厅</h2><p>休闲一下</p></div>
-    <div class="game-tabs">
-      <button class="game-tab" :class="{ active: currentGame==='snake' }"
-        @click="currentGame='snake'; setTimeout(() => initSnakeGame('snakeCanvas'), 50)">🐍 贪吃蛇</button>
-      <button class="game-tab" disabled>更多游戏开发中...</button>
-    </div>
-    <div class="game-canvas-wrap" id="snakeGameWrapper">
-      <canvas id="snakeCanvas"></canvas>
-    </div>
-    <div id="snakeEffectsBar" style="display:flex;gap:8px;justify-content:center;min-height:24px;flex-wrap:wrap;margin-top:10px;"></div>
-  </section>
-
-  <!-- Photos -->
-  <section class="content-section" :class="{ active: currentSection === 'photos' }" id="sec-photos">
-    <div class="section-header reveal"><h2>📷 摄影集</h2><p>徒步路上的风景</p></div>
-    <div class="photo-grid" id="photoGrid"></div>
-  </section>
-
-  <!-- Projects -->
-  <section class="content-section" :class="{ active: currentSection === 'projects' }" id="sec-projects">
-    <div class="section-header reveal"><h2>💻 项目作品</h2><p>个人项目与收藏</p></div>
-    <div class="project-grid" id="projectGrid"></div>
-  </section>
-
-  <!-- Knowledge -->
-  <section class="content-section" :class="{ active: currentSection === 'knowledge' }" id="sec-knowledge"
-    x-data="{ kgTab: '408' }" x-init="$watch('currentSection', v => { if(v==='knowledge') setTimeout(() => initKnowledgeGraph(kgTab), 100) })">
-    <div class="section-header reveal"><h2>🧠 知识图谱</h2><p>408考研 + 四六级英语</p></div>
-    <div class="knowledge-tabs">
-      <button @click="kgTab='408'; initKnowledgeGraph('408')" :class="kgTab==='408'?'active':''">📘 408 考研</button>
-      <button @click="kgTab='cet'; initKnowledgeGraph('cet')" :class="kgTab==='cet'?'active':''">🔤 四六级</button>
-    </div>
-    <div class="knowledge-graph-wrap" id="knowledgeGraph"></div>
-    <div class="knowledge-legend" id="knowledgeLegend"></div>
-  </section>
-
-  <!-- News -->
-  <section class="content-section" :class="{ active: currentSection === 'news' }" id="sec-news"
-    x-init="$watch('currentSection', v => { if(v==='news' && !window._newsLoaded) { window._newsLoaded = true; loadGitHubTrending(); } })">
-    <div class="section-header reveal"><h2>📰 前沿快讯</h2><p>AI科技 · GitHub Trending</p></div>
-    <div class="news-grid" id="newsGrid">
-      <div class="news-card"><div class="news-loading">加载中...</div></div>
-    </div>
-    <div class="ai-news-section">
-      <h3>🤖 AI 前沿速递</h3>
-      <div class="ai-news-list" id="aiNewsList"></div>
-    </div>
-  </section>
-
-  <!-- Tools -->
-  <section class="content-section" :class="{ active: currentSection === 'tools' }" id="sec-tools">
-    <div class="section-header reveal"><h2>🛠️ 工具收藏</h2><p>常用工具与资源导航</p></div>
-    <div id="toolsContent"></div>
-  </section>
-
-  <!-- Guestbook -->
-  <section class="content-section" :class="{ active: currentSection === 'guestbook' }" id="sec-guestbook">
-    <div class="section-header reveal"><h2>📬 留言板</h2><p>留下你的足迹</p></div>
-    <div id="giscusContainer" style="margin-top: 8px;">
-      <div style="text-align:center;padding:40px;color:var(--text-secondary);">
-        <p style="margin-bottom:12px;">💬 留言板加载中...</p>
-        <p style="font-size:13px;">如果长时间未显示，请确保仓库已配置 <a href="https://giscus.app" target="_blank" style="color:var(--accent);">Giscus</a></p>
-      </div>
-    </div>
-  </section>
-</main>
-
-<!-- Lightbox -->
-<div class="lightbox" id="lightbox">
-  <button class="lightbox-close" @click="closeLightbox()">✕</button>
-  <button class="lightbox-nav lightbox-prev" @click.stop="prevPhoto()">‹</button>
-  <img id="lightboxImg" src="" alt="" @click.stop>
-  <button class="lightbox-nav lightbox-next" @click.stop="nextPhoto()">›</button>
 </div>
 
-<!-- Alpine.js -->
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<canvas id="inkCanvas"></canvas>
+<canvas id="mountainCanvas"></canvas>
+<div id="panelIdx">01 / 08</div>
+<nav id="nav"></nav>
+<div id="lb"><div class="x" onclick="clb()">×</div><div class="nav prev" onclick="event.stopPropagation();pp()">‹</div><img id="lbImg" onclick="event.stopPropagation()"><div class="nav next" onclick="event.stopPropagation();np()">›</div></div>
 
 <script>
-// === Alpine App Store ===
-document.addEventListener('alpine:init', () => {
-  Alpine.data('app', () => ({
-    currentSection: location.hash ? location.hash.slice(1) : 'home',
-    themeIcon: '🌙',
-    themeLabel: '暗黑模式',
+// ═══ Panel counter top-right ═══
+(function(){var idx=document.getElementById('panelIdx');document.getElementById('scroll').addEventListener('scroll',function(){var i=Math.round(this.scrollLeft/innerWidth)+1;idx.textContent=(i<10?'0':'')+i+' / 08'})})();
+// ═══ Nav with text labels ═══
+(function(){var labels=['残響','工坊','项目','游戏','映像','研习','工具','关于'],n=document.getElementById('nav'),ps=document.querySelectorAll('.panel');ps.forEach(function(p,i){var b=document.createElement('button');b.textContent=labels[i]||i;if(i===0)b.className='active';b.onclick=function(){p.scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'})};n.appendChild(b)});document.getElementById('scroll').addEventListener('scroll',function(){var idx=Math.round(this.scrollLeft/innerWidth);document.querySelectorAll('#nav button').forEach(function(b,i){b.classList.toggle('active',i===idx)});if(idx>=5&&!window._kgInit){window._kgInit=!0;switchKG('408')}})})();
 
-    toggleTheme() {
-      document.documentElement.classList.toggle('dark');
-      const isDark = document.documentElement.classList.contains('dark');
-      this.themeIcon = isDark ? '☀️' : '🌙';
-      this.themeLabel = isDark ? '浅色模式' : '暗黑模式';
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    },
+// ═══ Hero parallax ═══
+(function(){var z=document.getElementById('zan'),x=document.getElementById('xiang');if(!z||!x)return;document.addEventListener('mousemove',function(e){var mx=(e.clientX/innerWidth-.5)*80,my=(e.clientY/innerHeight-.5)*80;z.style.transform='translate('+mx+'px,'+my+'px) scale('+(1+Math.abs(mx)/800)+')';z.style.filter='drop-shadow('+(8+mx/10)+'px '+(12+my/6)+'px 0px rgba(15,15,15,'+(.06+Math.abs(mx)/2000)+'))';x.style.transform='translate('+(-mx*2.5)+'px,'+(-my*2.5)+'px)';x.style.letterSpacing=(.25+Math.abs(mx)/400)+'em'})})();
 
-    init() {
-      const isDark = localStorage.getItem('theme') === 'dark' ||
-        (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        this.themeIcon = '☀️';
-        this.themeLabel = '浅色模式';
-      }
-      // Hash routing: sync URL hash with currentSection
-      this.$watch('currentSection', val => {
-        if (location.hash !== '#' + val) location.hash = val;
-      });
-      window.addEventListener('hashchange', () => {
-        this.currentSection = location.hash ? location.hash.slice(1) : 'home';
-      });
+// ═══ Mountain ═══
+(function(){var c=document.getElementById('mountainCanvas'),ctx;function draw(){c.width=innerWidth;c.height=260;ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);var layers=[{y:.35,amp:65,a:.06,f:.006},{y:.45,amp:50,a:.08,f:.01},{y:.55,amp:35,a:.1,f:.015},{y:.7,amp:22,a:.12,f:.02}];var off=document.getElementById('scroll').scrollLeft*.2;layers.forEach(function(l){ctx.beginPath();ctx.moveTo(0,c.height);for(var x=0;x<=c.width;x+=2){var t=x+off*l.f*40;var y=c.height*l.y+Math.sin(t*l.f)*l.amp+Math.sin(t*.022)*l.amp*.4+Math.sin(t*.004)*l.amp*.7;ctx.lineTo(x,y)}ctx.lineTo(c.width,c.height);ctx.closePath();ctx.fillStyle='rgba(15,15,15,'+l.a+')';ctx.fill()})}draw();window.addEventListener('resize',draw);document.getElementById('scroll').addEventListener('scroll',draw);setInterval(draw,100)})();
+
+// ═══ Ink ═══
+(function(){var c=document.getElementById('inkCanvas'),ctx,wd=innerWidth,ht=innerHeight,drops=[],trail=[],drawing=!1;function rs(){wd=c.width=innerWidth;ht=c.height=innerHeight}rs();window.onresize=rs;ctx=c.getContext('2d');ctx.lineCap='round';ctx.lineJoin='round';setInterval(function(){if(drops.filter(function(d){return!d.settled}).length<2){var r=50+Math.random()*80;drops.push({x:Math.random()*wd,y:Math.random()*ht,r:0,maxR:r,alpha:.18+Math.random()*.18,life:0,maxLife:140+Math.random()*180})}},2500);document.addEventListener('mousemove',function(e){if(drawing){trail.push({x:e.clientX,y:e.clientY,t:performance.now()});if(trail.length>200)trail.shift()}});document.addEventListener('mousedown',function(e){trail=[{x:e.clientX,y:e.clientY,t:performance.now()}];drawing=!0});document.addEventListener('mouseup',function(){drawing=!1});
+function loop(){
+  var now=performance.now();trail=trail.filter(function(p){return now-p.t<1800});
+  ctx.clearRect(0,0,wd,ht);
+  // Drops
+  for(var i=drops.length-1;i>=0;i--){var d=drops[i];d.r+=(d.maxR-d.r)*.03;d.life++;var p=d.life/d.maxLife,a=d.alpha*(1-p*p);var g=ctx.createRadialGradient(d.x,d.y,0,d.x,d.y,d.r);g.addColorStop(0,'rgba(15,15,15,'+a+')');g.addColorStop(.4,'rgba(15,15,15,'+(a*.5)+')');g.addColorStop(1,'rgba(15,15,15,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,2*Math.PI);ctx.fill();if(d.life>d.maxLife)drops.splice(i,1)}
+  // Trail
+  if(trail.length>1){
+    ctx.beginPath();ctx.moveTo(trail[0].x,trail[0].y);
+    for(var j=1;j<trail.length;j++){var mx=(trail[j-1].x+trail[j].x)/2,my=(trail[j-1].y+trail[j].y)/2;ctx.quadraticCurveTo(trail[j-1].x,trail[j-1].y,mx,my)}
+    ctx.strokeStyle='rgba(15,15,15,0.06)';ctx.lineWidth=28;ctx.stroke();ctx.strokeStyle='rgba(15,15,15,0.1)';ctx.lineWidth=14;ctx.stroke();ctx.strokeStyle='rgba(15,15,15,0.3)';ctx.lineWidth=4;ctx.stroke();
+  }
+  requestAnimationFrame(loop)}loop()})();
+
+// ═══ Projects ═══
+(function(){var q=[{t:'✦ MAIN',n:'Kingom Echoes',d:'暗黑童话沙盒RPG Godot 4.6 手工像素 八群落+生态+装饰',l:'https://github.com/2e3u/kingdom-echoes'},{t:'side',n:'Echo Scroll',d:'手卷式个人主页 此刻所在'},{t:'side',n:'Snake Pac-Man',d:'街机经典 Canvas渲染引擎'},{t:'side',n:'408 Notes',d:'计算机考研 数据结构 OS 网络'},{t:'side',n:'Dotfiles',d:'Neovim tmux Zsh 一键部署'}];document.getElementById('projList').innerHTML=q.map(function(i,n){var lk=i.l?'<a class=plink href='+i.l+' target=_blank>&rarr;</a>':'<span class=plink style=color:var(--grey)>—</span>';return'<div class="proj-item fade-in'+(n?(' d'+n):'')+'"><span class="ptag">'+i.t+'</span><h3>'+i.n+'</h3><p>'+i.d+'</p>'+lk+'</div>'}).join('')})();
+// ═══ Snake Game ═══
+function showGame(g){
+  var ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:250;background:var(--paper);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px';
+  if(g==='snake'){
+    var cv=document.createElement('canvas');cv.width=480;cv.height=480;cv.style.border='1px solid rgba(0,0,0,.06)';ov.appendChild(cv);
+    var lbl=document.createElement('div');lbl.style.cssText='font-family:DM Mono,monospace;font-size:10px;color:var(--grey);letter-spacing:.1em';lbl.textContent='SCORE: 0';ov.appendChild(lbl);
+    var hint=document.createElement('div');hint.style.cssText='font-family:DM Mono,monospace;font-size:8px;color:var(--faint);letter-spacing:.15em';hint.textContent='WASD/←↑↓→ · SPACE restart · ESC close';ov.appendChild(hint);
+    var ctx=cv.getContext('2d'),gs=16,snake=[{x:7,y:7},{x:6,y:7},{x:5,y:7}],dir={x:1,y:0},food={x:12,y:12},score=0,gameOver=!1,timer;
+    function spawnFood(){do{food.x=Math.floor(Math.random()*(cv.width/gs));food.y=Math.floor(Math.random()*(cv.height/gs))}while(snake.some(function(s){return s.x===food.x&&s.y===food.y}))}
+    function step(){
+      if(gameOver)return;
+      var head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+      if(head.x<0||head.x>=cv.width/gs||head.y<0||head.y>=cv.height/gs||snake.some(function(s){return s.x===head.x&&s.y===head.y})){gameOver=!0;clearInterval(timer);ctx.fillStyle='rgba(15,15,15,.3)';ctx.font='24px DM Mono,monospace';ctx.textAlign='center';ctx.fillText('GAME OVER',cv.width/2,cv.height/2);ctx.textAlign='start';return}
+      snake.unshift(head);if(head.x===food.x&&head.y===food.y){score+=10;lbl.textContent='SCORE: '+score;spawnFood()}else{snake.pop()}
+      ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='rgba(15,15,15,.03)';for(var x=0;x<cv.width/gs;x++)for(var y=0;y<cv.height/gs;y++)if((x+y)%2===0)ctx.fillRect(x*gs,y*gs,gs,gs);
+      ctx.fillStyle='#b83830';ctx.fillRect(food.x*gs+2,food.y*gs+2,gs-4,gs-4);
+      snake.forEach(function(s,i){ctx.fillStyle=i===0?'rgba(15,15,15,.8)':'rgba(15,15,15,.4)';ctx.fillRect(s.x*gs+1,s.y*gs+1,gs-2,gs-2)})
     }
-  }));
-});
-
-// === Scroll Reveal ===
-(function() {
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
+    timer=setInterval(step,120);
+    document.addEventListener('keydown',function h(e){
+      if(!ov.parentNode){document.removeEventListener('keydown',h);return}
+      if(e.key==='Escape'){ov.remove();clearInterval(timer);document.removeEventListener('keydown',h);return}
+      if(e.key===' '||e.code==='Space'){e.preventDefault();snake=[{x:7,y:7},{x:6,y:7},{x:5,y:7}];dir={x:1,y:0};score=0;gameOver=!1;lbl.textContent='SCORE: 0';spawnFood();clearInterval(timer);timer=setInterval(step,120);return}
+      if(gameOver)return;
+      var k=e.key.toLowerCase();if((k==='w'||k==='arrowup')&&dir.y!==1)dir={x:0,y:-1};if((k==='s'||k==='arrowdown')&&dir.y!==-1)dir={x:0,y:1};if((k==='a'||k==='arrowleft')&&dir.x!==1)dir={x:-1,y:0};if((k==='d'||k==='arrowright')&&dir.x!==-1)dir={x:1,y:0}
     });
-  }, { threshold: 0.1 });
-
-  // Observe all reveal elements (initial + dynamically added)
-  var observeReveals = function() {
-    document.querySelectorAll('.reveal:not(.reveal-observed)').forEach(function(el) {
-      el.classList.add('reveal-observed');
-      observer.observe(el);
-    });
-  };
-
-  // Observe immediately
-  observeReveals();
-
-  // Re-scan when content sections become active (Alpine-driven)
-  var mainEl = document.querySelector('.main');
-  if (mainEl) {
-    var mutationObs = new MutationObserver(function() {
-      setTimeout(observeReveals, 50);
-    });
-    mutationObs.observe(mainEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    ov.addEventListener('click',function(e){if(e.target===ov){ov.remove();clearInterval(timer)}})
+  }else{
+    ov.innerHTML='<div style="font-size:96px">👻</div><div style="font-size:36px;font-weight:700;font-family:Playfair Display,serif">Pac-Man</div><div style="font-family:DM Mono,monospace;font-size:10px;color:var(--grey);letter-spacing:.15em">WASD · SPACE · ESC</div>';
+    ov.addEventListener('click',function(){ov.remove()})
   }
-})();
-
-// === Sidebar mobile toggle ===
-(function() {
-  const hamburger = document.getElementById('hamburger');
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-
-  function openSidebar() {
-    sidebar.classList.add('open');
-    overlay.classList.add('show');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    overlay.classList.remove('show');
-    document.body.style.overflow = '';
-  }
-
-  hamburger.addEventListener('click', openSidebar);
-  overlay.addEventListener('click', closeSidebar);
-
-  sidebar.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      if (window.innerWidth <= 768) closeSidebar();
-    });
-  });
-})();
-
-// === Photos & Lightbox ===
-(function() {
-  window.photoData = [
-    { src: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=600&fit=crop', alt: 'Mountain hiking trail', title: '山脊徒步' },
-    { src: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop', alt: 'Mountain range panorama', title: '群山之巅' },
-    { src: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop', alt: 'Forest sunlight', title: '林间光影' },
-    { src: 'https://images.unsplash.com/photo-1454496522488-7a8e73e4a7c2?w=800&h=600&fit=crop', alt: 'Alpine lake', title: '高山湖泊' },
-    { src: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=600&fit=crop', alt: 'Valley view', title: '山谷远眺' },
-    { src: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&h=600&fit=crop', alt: 'Misty forest', title: '晨雾森林' }
-  ];
-  window.currentPhotoIdx = 0;
-
-  // Render photo grid
-  (function renderPhotoGrid() {
-    var grid = document.getElementById('photoGrid');
-    if (!grid) return;
-    grid.innerHTML = window.photoData.map(function(p, i) {
-      return '<div class="photo-card reveal reveal-delay-' + (i % 5 + 1) + '" onclick="openLightbox(' + i + ')">' +
-        '<img src="' + p.src + '" alt="' + p.alt + '" loading="lazy">' +
-        '<div class="photo-overlay"><span>' + p.title + '</span></div>' +
-      '</div>';
-    }).join('');
-  })();
-
-  window.openLightbox = function(idx) {
-    window.currentPhotoIdx = idx;
-    document.getElementById('lightboxImg').src = window.photoData[idx].src;
-    document.getElementById('lightbox').classList.add('open');
-    document.body.style.overflow = 'hidden';
-  };
-
-  window.closeLightbox = function() {
-    document.getElementById('lightbox').classList.remove('open');
-    document.body.style.overflow = '';
-  };
-
-  window.prevPhoto = function() {
-    window.currentPhotoIdx = (window.currentPhotoIdx - 1 + window.photoData.length) % window.photoData.length;
-    document.getElementById('lightboxImg').src = window.photoData[window.currentPhotoIdx].src;
-  };
-
-  window.nextPhoto = function() {
-    window.currentPhotoIdx = (window.currentPhotoIdx + 1) % window.photoData.length;
-    document.getElementById('lightboxImg').src = window.photoData[window.currentPhotoIdx].src;
-  };
-
-  document.getElementById('lightbox').addEventListener('click', function(e) {
-    if (e.target === this) window.closeLightbox();
-  });
-  document.addEventListener('keydown', function(e) {
-    if (!document.getElementById('lightbox').classList.contains('open')) return;
-    if (e.key === 'Escape') window.closeLightbox();
-    if (e.key === 'ArrowLeft') window.prevPhoto();
-    if (e.key === 'ArrowRight') window.nextPhoto();
-  });
-})();
-
-// === Projects ===
-(function() {
-  var projects = [
-    { name: 'Snake Game', desc: '带连击系统与道具系统的贪吃蛇游戏，Canvas 绘制，支持护盾、加速、双倍分数等 6 种道具。', tags: ['JavaScript', 'Canvas', 'Game'], github: '#', demo: '#' },
-    { name: 'Personal Hub', desc: '个人主页网站，集成 Alpine.js 响应式路由、明暗主题、摄影集、知识图谱等模块。', tags: ['Alpine.js', 'CSS', 'Responsive'], github: '#', live: 'https://wxb.me' },
-    { name: '408 Study Notes', desc: '考研 408 计算机统考复习笔记，涵盖数据结构、组成原理、操作系统、计算机网络。', tags: ['Markdown', 'Study', 'CS'], github: '#' },
-    { name: 'CET Vocabulary Trainer', desc: '四六级英语单词训练工具，支持艾宾浩斯记忆曲线复习提醒。', tags: ['Python', 'SQLite', 'CLI'], github: '#' },
-    { name: 'Hiking Log', desc: '徒步记录小工具，记录路线、海拔、耗时，支持 GPX 轨迹导入与可视化。', tags: ['React', 'Leaflet', 'Node.js'], github: '#' },
-    { name: 'Dotfiles', desc: '个人开发环境配置文件，包含 Neovim、tmux、Zsh 等工具的配置与安装脚本。', tags: ['Shell', 'Lua', 'Dotfiles'], github: '#' }
-  ];
-
-  var grid = document.getElementById('projectGrid');
-  if (grid) {
-    grid.innerHTML = projects.map(function(p) {
-      var tags = p.tags.map(function(t) { return '<span>' + t + '</span>'; }).join('');
-      var links = '';
-      if (p.github) links += '<a href="' + p.github + '" target="_blank"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>Code</a>';
-      if (p.demo) links += '<a href="' + p.demo + '" target="_blank">🔗 Demo</a>';
-      if (p.live) links += '<a href="' + p.live + '" target="_blank">🌐 Live</a>';
-      var idx = projects.indexOf(p);
-      return '<div class="project-card reveal reveal-delay-' + (idx % 5 + 1) + '">' +
-        '<h3>' + p.name + '</h3>' +
-        '<p>' + p.desc + '</p>' +
-        '<div class="project-tags">' + tags + '</div>' +
-        '<div class="project-links">' + links + '</div>' +
-      '</div>';
-    }).join('');
-  }
-})();
-
-// === Tools ===
-(function() {
-  var categories = [
-    { name: '开发工具', items: [
-      { icon: '🐙', name: 'GitHub', desc: '代码托管', url: 'https://github.com' },
-      { icon: '🖥️', name: 'VS Code', desc: '编辑器', url: 'https://code.visualstudio.com' },
-      { icon: '🦀', name: 'Rust Playground', desc: '在线运行', url: 'https://play.rust-lang.org' },
-      { icon: '🐳', name: 'Docker Hub', desc: '容器镜像', url: 'https://hub.docker.com' },
-      { icon: '⚡', name: 'Vite', desc: '构建工具', url: 'https://vitejs.dev' },
-      { icon: '▲', name: 'Vercel', desc: '部署平台', url: 'https://vercel.com' }
-    ]},
-    { name: '学习刷题', items: [
-      { icon: '📘', name: 'LeetCode', desc: '算法刷题', url: 'https://leetcode.cn' },
-      { icon: '🎓', name: '中国大学MOOC', desc: '在线课程', url: 'https://www.icourse163.org' },
-      { icon: '📝', name: 'CS DIY', desc: 'CS学习路线', url: 'https://csdiy.wiki' },
-      { icon: '🔤', name: 'YouGlish', desc: '英语发音', url: 'https://youglish.com' },
-      { icon: '🧮', name: 'VisuAlgo', desc: '算法可视化', url: 'https://visualgo.net/zh' },
-      { icon: '📚', name: 'MDN', desc: 'Web 文档', url: 'https://developer.mozilla.org' }
-    ]},
-    { name: '设计资源', items: [
-      { icon: '🎨', name: 'Dribbble', desc: '设计灵感', url: 'https://dribbble.com' },
-      { icon: '🖼️', name: 'Unsplash', desc: '免费图片', url: 'https://unsplash.com' },
-      { icon: '🌈', name: 'Coolors', desc: '配色方案', url: 'https://coolors.co' },
-      { icon: '📐', name: 'Figma', desc: 'UI 设计', url: 'https://figma.com' },
-      { icon: '✍️', name: 'Google Fonts', desc: '免费字体', url: 'https://fonts.google.com' },
-      { icon: '🎬', name: 'LottieFiles', desc: '动画资源', url: 'https://lottiefiles.com' }
-    ]},
-    { name: '常用工具', items: [
-      { icon: '📋', name: 'JSON Formatter', desc: 'JSON 格式化', url: 'https://jsonformatter.org' },
-      { icon: '🔐', name: 'JWT Debugger', desc: 'Token 解析', url: 'https://jwt.io' },
-      { icon: '⏱️', name: 'Cron Guru', desc: 'Cron 表达式', url: 'https://crontab.guru' },
-      { icon: '📊', name: 'Excalidraw', desc: '手绘图表', url: 'https://excalidraw.com' },
-      { icon: '🔍', name: 'Regex101', desc: '正则测试', url: 'https://regex101.com' },
-      { icon: '🚀', name: 'Carbon', desc: '代码截图', url: 'https://carbon.now.sh' }
-    ]}
-  ];
-
-  var container = document.getElementById('toolsContent');
-  if (container) {
-    container.innerHTML = categories.map(function(cat) {
-      var items = cat.items.map(function(t) {
-        return '<a href="' + t.url + '" target="_blank" class="tool-item">' +
-          '<span class="tool-icon">' + t.icon + '</span>' +
-          '<span class="tool-name">' + t.name + '</span>' +
-          '<span class="tool-desc">' + t.desc + '</span>' +
-        '</a>';
-      }).join('');
-      var catIdx = categories.indexOf(cat);
-    return '<div class="tools-category reveal reveal-delay-' + (catIdx % 5 + 1) + '"><h3>' + cat.name + '</h3><div class="tools-grid">' + items + '</div></div>';
-    }).join('');
-  }
-})();
-
-// === Knowledge Graph ===
-var knowledgeGraphState = null;
-
-function initKnowledgeGraph(tab) {
-  var container = document.getElementById('knowledgeGraph');
-  var legendEl = document.getElementById('knowledgeLegend');
-  if (!container) return;
-
-  // Clean up previous graph
-  if (knowledgeGraphState) {
-    if (knowledgeGraphState.timer) clearTimeout(knowledgeGraphState.timer);
-    knowledgeGraphState = null;
-  }
-  container.innerHTML = '';
-  if (legendEl) legendEl.innerHTML = '';
-
-  var data = tab === 'cet' ? getCETData() : get408Data();
-
-  if (legendEl) {
-    legendEl.innerHTML = data.categories.map(function(c) {
-      return '<span><span class="dot" style="background:' + c.color + '"></span>' + c.name + '</span>';
-    }).join('');
-  }
-
-  var width = container.clientWidth || 700;
-  var height = 480;
-
-  var svg = d3.select('#knowledgeGraph')
-    .append('svg')
-    .attr('viewBox', [0, 0, width, height])
-    .attr('width', width)
-    .attr('height', height);
-
-  // Zoom
-  var g = svg.append('g');
-  svg.call(d3.zoom().scaleExtent([0.5, 3]).on('zoom', function(e) {
-    g.attr('transform', e.transform);
-  }));
-
-  // Tooltip
-  var tooltip = d3.select('body').append('div')
-    .attr('class', 'kg-tooltip')
-    .style('position', 'absolute')
-    .style('background', 'var(--surface)')
-    .style('color', 'var(--text)')
-    .style('padding', '8px 12px')
-    .style('border-radius', '6px')
-    .style('font-size', '13px')
-    .style('pointer-events', 'none')
-    .style('opacity', 0)
-    .style('box-shadow', '0 4px 16px rgba(0,0,0,0.15)')
-    .style('z-index', '200')
-    .style('border', '1px solid var(--border)');
-
-  // Simulation
-  var sim = d3.forceSimulation(data.nodes)
-    .force('link', d3.forceLink(data.links).id(function(d) { return d.id; }).distance(function(d) { return d.dist || 80; }))
-    .force('charge', d3.forceManyBody().strength(-200))
-    .force('center', d3.forceCenter(width / 2, height / 2))
-    .force('collision', d3.forceCollide().radius(25));
-
-  // Links
-  var link = g.append('g')
-    .selectAll('line')
-    .data(data.links)
-    .join('line')
-    .attr('stroke', 'var(--border)')
-    .attr('stroke-width', 1.5)
-    .attr('stroke-opacity', 0.6);
-
-  // Nodes
-  var node = g.append('g')
-    .selectAll('g')
-    .data(data.nodes)
-    .join('g')
-    .attr('cursor', 'pointer')
-    .call(d3.drag()
-      .on('start', function(e, d) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-      .on('drag', function(e, d) { d.fx = e.x; d.fy = e.y; })
-      .on('end', function(e, d) { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
-    );
-
-  node.append('circle')
-    .attr('r', function(d) { return d.r || 18; })
-    .attr('fill', function(d) { return d.color; })
-    .attr('stroke', '#fff')
-    .attr('stroke-width', 2);
-
-  node.append('text')
-    .text(function(d) { return d.label; })
-    .attr('text-anchor', 'middle')
-    .attr('dy', '0.35em')
-    .attr('font-size', function(d) { return d.fontSize || 11; })
-    .attr('fill', '#fff')
-    .attr('font-weight', 500)
-    .style('pointer-events', 'none');
-
-  node.on('mouseenter', function(e, d) {
-    tooltip.style('opacity', 1).html('<strong>' + data.nodeLabels[d.id] + '</strong><br>' + (d.desc || ''));
-  }).on('mousemove', function(e) {
-    tooltip.style('left', (e.pageX + 12) + 'px').style('top', (e.pageY - 30) + 'px');
-  }).on('mouseleave', function() {
-    tooltip.style('opacity', 0);
-  });
-
-  sim.on('tick', function() {
-    link.attr('x1', function(d) { return d.source.x; })
-      .attr('y1', function(d) { return d.source.y; })
-      .attr('x2', function(d) { return d.target.x; })
-      .attr('y2', function(d) { return d.target.y; });
-    node.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
-  });
-
-  knowledgeGraphState = {
-    sim: sim,
-    tooltip: tooltip,
-    timer: setTimeout(function() { sim.stop(); }, 30000)
-  };
+  document.body.appendChild(ov)
 }
 
-function get408Data() {
-  var colors = { ds: '#2563eb', co: '#7c3aed', os: '#059669', cn: '#d97706' };
-  var nodes = [
-    // Root
-    { id: '408', label: '408', r: 26, color: '#1a1a1a', fontSize: 14 },
-    // Data Structures
-    { id: 'ds', label: '数据结构', r: 22, color: colors.ds, fontSize: 12 },
-    { id: 'ds1', label: '线性表', r: 14, color: colors.ds, desc: '顺序表、链表、栈、队列的定义与操作' },
-    { id: 'ds2', label: '树', r: 14, color: colors.ds, desc: '二叉树遍历、线索二叉树、哈夫曼树、并查集' },
-    { id: 'ds3', label: '图', r: 14, color: colors.ds, desc: 'DFS/BFS、最小生成树、最短路径、拓扑排序' },
-    { id: 'ds4', label: '查找', r: 14, color: colors.ds, desc: '顺序查找、二分查找、B树、散列表、KMP' },
-    { id: 'ds5', label: '排序', r: 14, color: colors.ds, desc: '快排、堆排、归并、基数排序、外部排序' },
-    // Computer Organization
-    { id: 'co', label: '组成原理', r: 22, color: colors.co, fontSize: 12 },
-    { id: 'co1', label: '数据表示', r: 14, color: colors.co, desc: '补码、浮点数IEEE754、ALU、算术逻辑运算' },
-    { id: 'co2', label: '存储器', r: 14, color: colors.co, desc: 'Cache映射、虚拟存储器、TLB、多级存储' },
-    { id: 'co3', label: '指令系统', r: 14, color: colors.co, desc: '寻址方式、CISC/RISC、指令流水线、冒险' },
-    { id: 'co4', label: 'CPU', r: 14, color: colors.co, desc: '数据通路、控制器、微程序、异常与中断' },
-    { id: 'co5', label: '总线与IO', r: 14, color: colors.co, desc: '总线仲裁、DMA、中断方式、程序查询' },
-    // Operating Systems
-    { id: 'os', label: '操作系统', r: 22, color: colors.os, fontSize: 12 },
-    { id: 'os1', label: '进程管理', r: 14, color: colors.os, desc: '进程状态、PV操作、死锁、银行家算法、调度' },
-    { id: 'os2', label: '内存管理', r: 14, color: colors.os, desc: '分页、分段、虚拟内存、页面置换算法' },
-    { id: 'os3', label: '文件系统', r: 14, color: colors.os, desc: 'inode、目录结构、空闲空间管理、磁盘调度' },
-    { id: 'os4', label: 'IO管理', r: 14, color: colors.os, desc: 'SPOOLing、缓冲、设备独立性、磁盘臂调度' },
-    // Computer Networks
-    { id: 'cn', label: '计算机网络', r: 22, color: colors.cn, fontSize: 12 },
-    { id: 'cn1', label: '物理层', r: 14, color: colors.cn, desc: '奈氏准则、香农定理、编码调制、交换技术' },
-    { id: 'cn2', label: '数据链路', r: 14, color: colors.cn, desc: 'CSMA/CD、PPP、MAC地址、交换机与VLAN' },
-    { id: 'cn3', label: '网络层', r: 14, color: colors.cn, desc: 'IP协议、子网划分、CIDR、RIP/OSPF/BGP' },
-    { id: 'cn4', label: '传输层', r: 14, color: colors.cn, desc: 'TCP三次握手、流量控制、拥塞控制、UDP' },
-    { id: 'cn5', label: '应用层', r: 14, color: colors.cn, desc: 'HTTP/DNS/FTP/SMTP、Cookie、CDN' }
-  ];
+// ═══ Photos ═══
+var _px=0,_ps=[];
+(function(){var I=[{s:'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=300&h=300&fit=crop',l:'百花山'},{s:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=300&fit=crop',l:'灵山'},{s:'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300&h=300&fit=crop',l:'香山'},{s:'https://images.unsplash.com/photo-1454496522488-7a8e73e4a7c2?w=300&h=300&fit=crop',l:'玉渡山'},{s:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=300&h=300&fit=crop',l:'海坨山'},{s:'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=300&h=300&fit=crop',l:'雾灵山'},{s:'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=300&h=300&fit=crop',l:'喇叭沟门'},{s:'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&h=300&fit=crop',l:'金海湖'},{s:'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=300&h=300&fit=crop',l:'冰山梁'},{s:'https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=300&h=300&fit=crop',l:'天际线'},{s:'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=300&h=300&fit=crop',l:'山脉'},{s:'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=300&h=300&fit=crop',l:'海浪'}];_ps=I;document.getElementById('photoWall').innerHTML=I.map(function(p,i){return'<div class="photo-cell" data-l="'+p.l+'" onclick="op('+i+')"><img src="'+p.s+'" loading="lazy"></div>'}).join('')})();
+function op(i){_px=i;document.getElementById('lbImg').src=_ps[i].s;document.getElementById('lb').classList.add('on')}
+function clb(){document.getElementById('lb').classList.remove('on')}
+function pp(){_px=(_px-1+_ps.length)%_ps.length;document.getElementById('lbImg').src=_ps[_px].s}
+function np(){_px=(_px+1)%_ps.length;document.getElementById('lbImg').src=_ps[_px].s}
+document.addEventListener('keydown',function(e){if(!document.getElementById('lb').classList.contains('on'))return;if(e.key==='Escape')clb();if(e.key==='ArrowLeft')pp();if(e.key==='ArrowRight')np()});
 
-  var links = [
-    { source: '408', target: 'ds', dist: 60 }, { source: '408', target: 'co', dist: 60 },
-    { source: '408', target: 'os', dist: 60 }, { source: '408', target: 'cn', dist: 60 },
-    { source: 'ds', target: 'ds1' }, { source: 'ds', target: 'ds2' }, { source: 'ds', target: 'ds3' }, { source: 'ds', target: 'ds4' }, { source: 'ds', target: 'ds5' },
-    { source: 'co', target: 'co1' }, { source: 'co', target: 'co2' }, { source: 'co', target: 'co3' }, { source: 'co', target: 'co4' }, { source: 'co', target: 'co5' },
-    { source: 'os', target: 'os1' }, { source: 'os', target: 'os2' }, { source: 'os', target: 'os3' }, { source: 'os', target: 'os4' },
-    { source: 'cn', target: 'cn1' }, { source: 'cn', target: 'cn2' }, { source: 'cn', target: 'cn3' }, { source: 'cn', target: 'cn4' }, { source: 'cn', target: 'cn5' },
-    // Cross links
-    { source: 'os1', target: 'co4', dist: 100 }, { source: 'os2', target: 'co2', dist: 100 },
-    { source: 'os3', target: 'co5', dist: 100 }, { source: 'cn3', target: 'ds3', dist: 100 }
-  ];
-
-  var nodeLabels = {};
-  nodes.forEach(function(n) { nodeLabels[n.id] = n.label; });
-
-  return {
-    nodes: nodes,
-    links: links,
-    nodeLabels: nodeLabels,
-    categories: [
-      { name: '数据结构', color: colors.ds },
-      { name: '组成原理', color: colors.co },
-      { name: '操作系统', color: colors.os },
-      { name: '计算机网络', color: colors.cn }
-    ]
-  };
+// ═══ Knowledge Graph ═══
+var _kg='408',_kgInit=!1;
+function switchKG(t,btn){_kg=t;drawKG();if(btn){document.querySelectorAll('.codex-tab').forEach(function(b){b.classList.remove('on')});btn.classList.add('on')}}
+function drawKG(){
+  var c=document.getElementById('kgBox'),l=document.getElementById('kgLegend');if(!c)return;c.innerHTML='';l.innerHTML='';
+  var d=_kg==='cet'?getCET():get408();l.innerHTML=d.cats.map(function(cat){return'<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:8px;height:8px;background:'+cat.c+'"></span>'+cat.n+'</span>'}).join('');
+  var w=c.clientWidth||700,h=360,cx=w/2,cy=h/2,ns=d.nodes.map(function(n){return Object.assign({},n,{x:cx+(Math.random()-.5)*160,y:cy+(Math.random()-.5)*120})});
+  ns.forEach(function(n){if(n.id===_kg||n.id==='cet'){n.x=cx;n.y=cy;n.fixed=1}});
+  for(var s=0;s<80;s++){for(var i=0;i<ns.length;i++)for(var j=i+1;j<ns.length;j++){var dx=ns[j].x-ns[i].x,dy=ns[j].y-ns[i].y,dist=Math.sqrt(dx*dx+dy*dy)||1;if(ns[i].fixed||ns[j].fixed)continue;var f=180/(dist*dist);ns[i].x-=dx/dist*f*.5;ns[i].y-=dy/dist*f*.5;ns[j].x+=dx/dist*f*.5;ns[j].y+=dy/dist*f*.5}d.links.forEach(function(lk){var s=ns.find(function(n){return n.id===lk.source}),t=ns.find(function(n){return n.id===lk.target});if(!s||!t||s.fixed||t.fixed)return;var dx=t.x-s.x,dy=t.y-s.y,dist=Math.sqrt(dx*dx+dy*dy)||1,td=lk.dist||45,f=(dist-td)*.02;s.x+=dx/dist*f;s.y+=dy/dist*f;t.x-=dx/dist*f;t.y-=dy/dist*f});ns.forEach(function(n){if(!n.fixed){n.x+=(cx-n.x)*.005;n.y+=(cy-n.y)*.005}})}
+  var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 '+w+' '+h);svg.style.width='100%';svg.style.height=h+'px';c.appendChild(svg);var g=document.createElementNS('http://www.w3.org/2000/svg','g');svg.appendChild(g);
+  d.links.forEach(function(lk){var s=ns.find(function(n){return n.id===lk.source}),t=ns.find(function(n){return n.id===lk.target});if(!s||!t)return;var line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',s.x);line.setAttribute('y1',s.y);line.setAttribute('x2',t.x);line.setAttribute('y2',t.y);line.setAttribute('stroke','rgba(15,15,15,.06)');line.setAttribute('stroke-width','1');g.appendChild(line)});
+  ns.forEach(function(n){var c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',n.r||11);c.setAttribute('fill',n.color||'rgba(0,0,0,0)');c.setAttribute('stroke','rgba(15,15,15,.15)');c.setAttribute('stroke-width','1.5');c.style.cursor='pointer';c.style.transition='all .3s';if(n.desc){var tt=document.createElementNS('http://www.w3.org/2000/svg','title');tt.textContent=n.desc;c.appendChild(tt)}c.addEventListener('mouseenter',function(){c.setAttribute('stroke','rgba(15,15,15,.4)');c.setAttribute('stroke-width','2.5')});c.addEventListener('mouseleave',function(){c.setAttribute('stroke','rgba(15,15,15,.15)');c.setAttribute('stroke-width','1.5')});g.appendChild(c);var t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',n.x);t.setAttribute('y',n.y+3);t.setAttribute('text-anchor','middle');t.setAttribute('fill','#0f0f0f');t.setAttribute('font-size',(n.fs||10)+'px');t.setAttribute('font-family','Noto Serif SC,serif');t.style.cursor='pointer';t.textContent=n.label;g.appendChild(t)})
 }
+function get408(){var C={ds:'#508860',co:'#887028',os:'#c4a148',cn:'#b83830'};return{nodes:[{id:'408',label:'408',r:20,color:'transparent',fs:13,desc:'计算机统考 · 数据结构+组成原理+OS+网络'},{id:'ds',label:'数据结构',r:16,color:'transparent',fs:11,desc:'线性表·栈·队列·树·图·查找·排序'},{id:'a1',label:'线性表',r:9,color:'transparent'},{id:'a2',label:'树',r:9,color:'transparent'},{id:'a3',label:'图',r:9,color:'transparent'},{id:'a4',label:'查找',r:9,color:'transparent'},{id:'a5',label:'排序',r:9,color:'transparent'},{id:'co',label:'组成原理',r:16,color:'transparent',fs:11,desc:'数据表示·存储器·指令系统·CPU·总线'},{id:'b1',label:'数据表示',r:9,color:'transparent'},{id:'b2',label:'存储器',r:9,color:'transparent'},{id:'b3',label:'指令',r:9,color:'transparent'},{id:'b4',label:'CPU',r:9,color:'transparent'},{id:'b5',label:'总线',r:9,color:'transparent'},{id:'os',label:'操作系统',r:16,color:'transparent',fs:11,desc:'进程管理·内存管理·文件系统·I/O'},{id:'c1',label:'进程',r:9,color:'transparent'},{id:'c2',label:'内存',r:9,color:'transparent'},{id:'c3',label:'文件',r:9,color:'transparent'},{id:'c4',label:'IO',r:9,color:'transparent'},{id:'cn',label:'网络',r:16,color:'transparent',fs:11,desc:'物理层·链路层·网络层·传输层·应用层'},{id:'d1',label:'物理层',r:9,color:'transparent'},{id:'d2',label:'数据链路',r:9,color:'transparent'},{id:'d3',label:'网络层',r:9,color:'transparent'},{id:'d4',label:'传输层',r:9,color:'transparent'},{id:'d5',label:'应用层',r:9,color:'transparent'}],links:[{source:'408',target:'ds'},{source:'408',target:'co'},{source:'408',target:'os'},{source:'408',target:'cn'},{source:'ds',target:'a1'},{source:'ds',target:'a2'},{source:'ds',target:'a3'},{source:'ds',target:'a4'},{source:'ds',target:'a5'},{source:'co',target:'b1'},{source:'co',target:'b2'},{source:'co',target:'b3'},{source:'co',target:'b4'},{source:'co',target:'b5'},{source:'os',target:'c1'},{source:'os',target:'c2'},{source:'os',target:'c3'},{source:'os',target:'c4'},{source:'cn',target:'d1'},{source:'cn',target:'d2'},{source:'cn',target:'d3'},{source:'cn',target:'d4'},{source:'cn',target:'d5'}],cats:[{n:'数据结构',c:C.ds},{n:'组成原理',c:C.co},{n:'操作系统',c:C.os},{n:'网络',c:C.cn}]}}
+function getCET(){var C={c4:'#508860',c6:'#887028'};return{nodes:[{id:'cet',label:'CET',r:20,color:'transparent',fs:13,desc:'大学英语四级·六级考试'},{id:'c4',label:'四级',r:16,color:'transparent',fs:11,desc:'CET-4 · 听力·阅读·写作·翻译·词汇'},{id:'e1',label:'听力',r:9,color:'transparent'},{id:'e2',label:'阅读',r:9,color:'transparent'},{id:'e3',label:'写作',r:9,color:'transparent'},{id:'e4',label:'翻译',r:9,color:'transparent'},{id:'e5',label:'词汇',r:9,color:'transparent'},{id:'c6',label:'六级',r:16,color:'transparent',fs:11,desc:'CET-6 · 听力·阅读·写作·翻译·词汇'},{id:'f1',label:'听力',r:9,color:'transparent'},{id:'f2',label:'阅读',r:9,color:'transparent'},{id:'f3',label:'写作',r:9,color:'transparent'},{id:'f4',label:'翻译',r:9,color:'transparent'},{id:'f5',label:'词汇',r:9,color:'transparent'}],links:[{source:'cet',target:'c4'},{source:'cet',target:'c6'},{source:'c4',target:'e1'},{source:'c4',target:'e2'},{source:'c4',target:'e3'},{source:'c4',target:'e4'},{source:'c4',target:'e5'},{source:'c6',target:'f1'},{source:'c6',target:'f2'},{source:'c6',target:'f3'},{source:'c6',target:'f4'},{source:'c6',target:'f5'},{source:'e5',target:'f5',dist:65}],cats:[{n:'CET-4',c:C.c4},{n:'CET-6',c:C.c6}]}}
 
-function getCETData() {
-  var colors = { cet4: '#2563eb', cet6: '#7c3aed' };
-  var nodes = [
-    { id: 'cet', label: 'CET', r: 26, color: '#1a1a1a', fontSize: 14 },
-    { id: 'cet4', label: '四级', r: 22, color: colors.cet4, fontSize: 13 },
-    { id: 'cet4a', label: '听力', r: 15, color: colors.cet4, desc: '短篇新闻、长对话、听力篇章，语速120-140词/分钟' },
-    { id: 'cet4b', label: '阅读', r: 15, color: colors.cet4, desc: '选词填空、长篇阅读匹配、仔细阅读，词汇量约4500' },
-    { id: 'cet4c', label: '写作', r: 15, color: colors.cet4, desc: '议论文/说明文，120-180词，常见话题：教育/科技/环境' },
-    { id: 'cet4d', label: '翻译', r: 15, color: colors.cet4, desc: '汉译英段落翻译，140-160字，涉及中国文化/历史' },
-    { id: 'cet4e', label: '核心词汇', r: 15, color: colors.cet4, desc: '高频词: abandon, absorb, access, account, accurate...共约4500词' },
-    { id: 'cet6', label: '六级', r: 22, color: colors.cet6, fontSize: 13 },
-    { id: 'cet6a', label: '听力', r: 15, color: colors.cet6, desc: '讲座/访谈为主，语速140-160词/分钟，学术性更强' },
-    { id: 'cet6b', label: '阅读', r: 15, color: colors.cet6, desc: '学术文章、评论、议论文，词汇量约6000+' },
-    { id: 'cet6c', label: '写作', r: 15, color: colors.cet6, desc: '议论文/图表作文，150-200词，需要论证与分析能力' },
-    { id: 'cet6d', label: '翻译', r: 15, color: colors.cet6, desc: '汉译英，180-200字，涉及社会热点/科技/文化' },
-    { id: 'cet6e', label: '进阶词汇', r: 15, color: colors.cet6, desc: '高频词: abundant, accommodate, acknowledge, acquire...共约6000词' }
-  ];
+// ═══ Tools ═══
+(function(){var rows=[[{i:'🐙',n:'GitHub',d:'code',u:'https://github.com'},{i:'🖥️',n:'VS Code',d:'editor',u:'https://code.visualstudio.com'},{i:'⚡',n:'Vite',d:'build',u:'https://vitejs.dev'},{i:'▲',n:'Vercel',d:'deploy',u:'https://vercel.com'}],[{i:'📘',n:'LeetCode',d:'practice',u:'https://leetcode.cn'},{i:'🎓',n:'MOOC',d:'courses',u:'https://icourse163.org'},{i:'🧮',n:'VisuAlgo',d:'algorithms',u:'https://visualgo.net'},{i:'📚',n:'MDN',d:'docs',u:'https://developer.mozilla.org'}],[{i:'🎨',n:'Dribbble',d:'inspiration',u:'https://dribbble.com'},{i:'🖼️',n:'Unsplash',d:'photos',u:'https://unsplash.com'},{i:'🌈',n:'Coolors',d:'palettes',u:'https://coolors.co'},{i:'📐',n:'Figma',d:'design',u:'https://figma.com'}]];var g=document.getElementById('toolsBox'),h='';for(var r=0;r<rows.length;r++){h+='<div class=tool-row>';for(var c=0;c<rows[r].length;c++){var t=rows[r][c];h+='<a class=tool-item href='+t.u+' target=_blank><span class=ti>'+t.i+'</span><span class=tn>'+t.n+'</span><span class=td>'+t.d+'</span></a>'}h+='</div>'}g.innerHTML=h})();
 
-  var links = [
-    { source: 'cet', target: 'cet4', dist: 50 }, { source: 'cet', target: 'cet6', dist: 50 },
-    { source: 'cet4', target: 'cet4a' }, { source: 'cet4', target: 'cet4b' }, { source: 'cet4', target: 'cet4c' }, { source: 'cet4', target: 'cet4d' }, { source: 'cet4', target: 'cet4e' },
-    { source: 'cet6', target: 'cet6a' }, { source: 'cet6', target: 'cet6b' }, { source: 'cet6', target: 'cet6c' }, { source: 'cet6', target: 'cet6d' }, { source: 'cet6', target: 'cet6e' },
-    { source: 'cet4a', target: 'cet6a', dist: 80 }, { source: 'cet4b', target: 'cet6b', dist: 80 },
-    { source: 'cet4c', target: 'cet6c', dist: 80 }, { source: 'cet4d', target: 'cet6d', dist: 80 },
-    { source: 'cet4e', target: 'cet6e', dist: 80 }
-  ];
+// Init
+(function(){document.querySelectorAll('.fade-in').forEach(function(e,i){if(e.closest('#p0')||e.closest('#p1')||e.closest('#p2')||e.closest('#p3')||e.closest('#p4'))e.classList.add('show')})})();
 
-  var nodeLabels = {};
-  nodes.forEach(function(n) { nodeLabels[n.id] = n.label; });
+// ═══ Keyboard Nav ═══
+document.addEventListener('keydown',function(e){if(document.getElementById('lb').classList.contains('on'))return;var s=document.getElementById('scroll'),idx=Math.round(s.scrollLeft/innerWidth),ps=document.querySelectorAll('.panel');if(e.key==='ArrowRight'||e.key==='ArrowDown'){idx=Math.min(idx+1,ps.length-1);ps[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'})}if(e.key==='ArrowLeft'||e.key==='ArrowUp'){idx=Math.max(idx-1,0);ps[idx].scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'})}});
 
-  return {
-    nodes: nodes,
-    links: links,
-    nodeLabels: nodeLabels,
-    categories: [
-      { name: 'CET-4', color: colors.cet4 },
-      { name: 'CET-6', color: colors.cet6 }
-    ]
-  };
-}
-
-// === News ===
-window._newsLoaded = false;
-
-var AI_NEWS = [
-  { date: '2026-05', title: 'Anthropic 发布 Claude Opus 4.7，推理能力大幅提升', url: '#' },
-  { date: '2026-05', title: 'OpenAI 开源轻量级模型，支持边缘设备本地推理', url: '#' },
-  { date: '2026-04', title: 'Google DeepMind 推出新一代蛋白质结构预测模型', url: '#' },
-  { date: '2026-04', title: 'Meta 开源 Llama 4 系列，多模态能力全面升级', url: '#' },
-  { date: '2026-03', title: 'WebAssembly GC 正式落地，浏览器运行效率再提升', url: '#' },
-  { date: '2026-03', title: 'Rust 语言在 Linux 内核中的应用持续扩大', url: '#' }
-];
-
-function loadGitHubTrending() {
-  var grid = document.getElementById('newsGrid');
-  if (!grid) return;
-
-  // Use GitHub search API: repos with most stars created in the last 7 days
-  var since = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-  fetch('https://api.github.com/search/repositories?q=created:>=' + since + '&sort=stars&order=desc&per_page=6')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (!data.items || !data.items.length) {
-        grid.innerHTML = '<div class="news-error">暂无数据</div>';
-        return;
-      }
-      grid.innerHTML = data.items.map(function(repo) {
-        return '<div class="news-card">' +
-          '<div class="news-header">' +
-            '<img class="news-avatar" src="' + repo.owner.avatar_url + '&s=48" alt="" loading="lazy">' +
-            '<a class="news-repo" href="' + repo.html_url + '" target="_blank">' + repo.full_name + '</a>' +
-          '</div>' +
-          '<p class="news-desc">' + (repo.description || '暂无描述') + '</p>' +
-          '<div class="news-meta">' +
-            '<span>⭐ ' + formatStarCount(repo.stargazers_count) + '</span>' +
-            '<span>🔀 ' + repo.forks_count + '</span>' +
-            (repo.language ? '<span class="news-lang"><span class="news-lang-dot" style="background:' + langColor(repo.language) + '"></span>' + repo.language + '</span>' : '') +
-          '</div>' +
-        '</div>';
-      }).join('');
-    })
-    .catch(function() {
-      grid.innerHTML = '<div class="news-error">加载失败，请稍后重试</div>';
-    });
-}
-
-function formatStarCount(n) {
-  if (n >= 10000) return (n / 1000).toFixed(1) + 'k';
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
-  return n.toString();
-}
-
-function langColor(lang) {
-  var map = { 'JavaScript': '#f1e05a', 'TypeScript': '#3178c6', 'Python': '#3572A5', 'Rust': '#dea584', 'Go': '#00ADD8', 'Java': '#b07219', 'C++': '#f34b7d', 'C': '#555555', 'Ruby': '#701516', 'Swift': '#F05138', 'Kotlin': '#A97BFF' };
-  return map[lang] || '#8b8b8b';
-}
-
-(function renderAINews() {
-  var list = document.getElementById('aiNewsList');
-  if (!list) return;
-  list.innerHTML = AI_NEWS.map(function(n) {
-    return '<a href="' + n.url + '" class="ai-news-item">' +
-      '<span class="ai-news-date">' + n.date + '</span>' +
-      '<span class="ai-news-title">' + n.title + '</span>' +
-    '</a>';
-  }).join('');
-})();
-
-function initSnakeGame(canvasId) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  const GRID = 20;
-  const COLS = 25;
-  const ROWS = 25;
-
-  const wrapper = document.getElementById('snakeGameWrapper');
-  const maxSize = Math.min(wrapper.offsetWidth - 16, 500);
-  canvas.width = maxSize;
-  canvas.height = maxSize;
-  const CELL = canvas.width / COLS;
-
-  function hexToRgba(hex, alpha) {
-    const r = parseInt(hex.slice(1,3),16);
-    const g = parseInt(hex.slice(3,5),16);
-    const b = parseInt(hex.slice(5,7),16);
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
-
-  if (canvas._gameState) {
-    cancelAnimationFrame(canvas._gameState.frameId);
-    if (canvas._cleanup) canvas._cleanup();
-  }
-
-  const settings = (() => {
-    try { return JSON.parse(localStorage.getItem('neonSnakeSettings')) || {fruitCount:3,gameSpeed:90,comboWindow:3,obstacleCount:6,powerUpFrequency:50}; }
-    catch(_) { return {fruitCount:3,gameSpeed:90,comboWindow:3,obstacleCount:6,powerUpFrequency:50}; }
-  })();
-
-  const state = {
-    snake: [{x:12,y:12},{x:11,y:12},{x:10,y:12}],
-    foods: [],
-    dx: 1, dy: 0,
-    nextDx: 1, nextDy: 0,
-    score: 0,
-    best: parseInt(localStorage.getItem('neonSnakeBest')||'0'),
-    running: true,
-    paused: false,
-    gameOver: false,
-    speed: 90,
-    lastTick: performance.now(),
-    particles: [],
-    obstacles: [],
-    comboCount: 0,
-    lastEatTime: 0,
-    comboDisplayAlpha: 0,
-    comboDisplayText: '',
-    maxCombo: 1,
-    activeEffects: {},
-    powerUpItems: [],
-    lastPowerUpSpawn: 0,
-    frameId: null,
-  };
-
-  canvas._gameState = state;
-
-  const FOOD_COLORS = ['#ff2d7b','#ffd700','#39ff14','#00f0ff','#ff6b35'];
-  const POWERUP_DEFS = {
-    shield:{name:'护盾',color:'#00f0ff',cssClass:'shield',duration:10000,buff:true,desc:'抵挡一次撞击'},
-    speed:{name:'加速',color:'#39ff14',cssClass:'speed',duration:7000,buff:true,desc:'移动速度提升'},
-    multiply:{name:'双倍',color:'#ffd700',cssClass:'multiply',duration:8000,buff:true,desc:'得分翻倍'},
-    shrink:{name:'缩短',color:'#ff2d7b',cssClass:'shrink',duration:0,buff:false,desc:'立即缩短蛇身'},
-    slow:{name:'减速',color:'#ff6b35',cssClass:'slow',duration:7000,buff:false,desc:'移动速度降低'},
-    reverse:{name:'反转',color:'#9b59b6',cssClass:'reverse',duration:5000,buff:false,desc:'方向键反转'},
-  };
-  const POWERUP_KEYS = Object.keys(POWERUP_DEFS);
-  const POWERUP_LIFETIME = 15000;
-  const MAX_POWERUPS = 3;
-
-  function isOccupied(x,y) {
-    if(state.snake.some(s=>s.x===x&&s.y===y)) return true;
-    if(state.foods.some(f=>f.x===x&&f.y===y)) return true;
-    if(state.obstacles.some(o=>o.x===x&&o.y===y)) return true;
-    if(state.powerUpItems.some(p=>p.x===x&&p.y===y)) return true;
-    return false;
-  }
-
-  function placeFood() {
-    const free=[];
-    for(let x=0;x<COLS;x++) for(let y=0;y<ROWS;y++) if(!isOccupied(x,y)) free.push({x,y});
-    if(!free.length) return;
-    const pos=free[Math.floor(Math.random()*free.length)];
-    state.foods.push({x:pos.x,y:pos.y,color:FOOD_COLORS[Math.floor(Math.random()*FOOD_COLORS.length)]});
-  }
-
-  function placeFoods() { state.foods=[]; for(let i=0;i<settings.fruitCount;i++) placeFood(); }
-
-  function generateObstacles(count) {
-    state.obstacles=[];
-    const safe=new Set();
-    for(let dx=-3;dx<=3;dx++) for(let dy=-3;dy<=3;dy++) safe.add(`${12+dx},${12+dy}`);
-    for(let i=0;i<count;i++) {
-      let a=0;
-      while(a<200){ const x=Math.floor(Math.random()*COLS),y=Math.floor(Math.random()*ROWS);
-        if(!isOccupied(x,y)&&!safe.has(`${x},${y}`)){state.obstacles.push({x,y});break;} a++; }
-    }
-  }
-
-  function hasEffect(t){return !!state.activeEffects[t];}
-
-  function spawnPowerUp() {
-    if(state.powerUpItems.length>=MAX_POWERUPS) return;
-    const now=performance.now();
-    if(now-state.lastPowerUpSpawn<3000) return;
-    if(Math.random()*100>settings.powerUpFrequency) return;
-    state.lastPowerUpSpawn=now;
-    const free=[];
-    for(let x=0;x<COLS;x++) for(let y=0;y<ROWS;y++) if(!isOccupied(x,y)) free.push({x,y});
-    if(!free.length) return;
-    const pos=free[Math.floor(Math.random()*free.length)];
-    state.powerUpItems.push({x:pos.x,y:pos.y,type:POWERUP_KEYS[Math.floor(Math.random()*POWERUP_KEYS.length)],spawnTime:now});
-  }
-
-  function spawnParticles(x,y,color) {
-    for(let i=0;i<12;i++){
-      const a=Math.PI*2*i/12+Math.random()*0.3,sp=2+Math.random()*3;
-      state.particles.push({x:x*CELL+CELL/2,y:y*CELL+CELL/2,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,decay:0.02+Math.random()*0.04,color:Math.random()>0.5?'#00f0ff':color});
-    }
-  }
-
-  function applyEffect(type) {
-    const def=POWERUP_DEFS[type];
-    if(def.duration>0) state.activeEffects[type]={expiresAt:performance.now()+def.duration};
-    if(type==='shrink'){const mr=state.snake.length-2;if(mr>0){const r=Math.min(Math.max(1,Math.floor(state.snake.length/3)),mr);state.snake.splice(state.snake.length-r,r);}}
-  }
-
-  function updateEffectsBar() {
-    const bar=document.getElementById('snakeEffectsBar');
-    if(!bar) return;
-    const now=performance.now();
-    let h='';
-    for(const k of Object.keys(state.activeEffects)){
-      const def=POWERUP_DEFS[k],rem=Math.max(0,Math.ceil((state.activeEffects[k].expiresAt-now)/1000));
-      h+=`<span style="font-size:11px;padding:3px 8px;border-radius:4px;border:1px solid ${def.color};color:${def.color};">${def.name} ${rem}s</span>`;
-    }
-    bar.innerHTML=h;
-  }
-
-  function tick() {
-    state.dx=state.nextDx; state.dy=state.nextDy;
-    const head=state.snake[0];
-    const nh={x:head.x+state.dx,y:head.y+state.dy};
-    if(nh.x<0) nh.x=COLS-1; if(nh.x>=COLS) nh.x=0;
-    if(nh.y<0) nh.y=ROWS-1; if(nh.y>=ROWS) nh.y=0;
-
-    if(state.obstacles.some(o=>o.x===nh.x&&o.y===nh.y)){
-      if(hasEffect('shield')){delete state.activeEffects.shield;spawnParticles(nh.x,nh.y,'#00f0ff');}
-      else{state.gameOver=true;state.running=false;if(state.score>state.best){state.best=state.score;localStorage.setItem('neonSnakeBest',state.best);}return;}
-    }
-    if(state.snake.some(s=>s.x===nh.x&&s.y===nh.y)){state.gameOver=true;state.running=false;if(state.score>state.best){state.best=state.score;localStorage.setItem('neonSnakeBest',state.best);}return;}
-
-    state.snake.unshift(nh);
-    const pupIdx=state.powerUpItems.findIndex(p=>p.x===nh.x&&p.y===nh.y);
-    if(pupIdx!==-1){applyEffect(state.powerUpItems[pupIdx].type);spawnParticles(nh.x,nh.y,POWERUP_DEFS[state.powerUpItems[pupIdx].type].color);state.powerUpItems.splice(pupIdx,1);}
-
-    const eatIdx=state.foods.findIndex(f=>f.x===nh.x&&f.y===nh.y);
-    if(eatIdx!==-1){
-      const now=performance.now();
-      if(now-state.lastEatTime<settings.comboWindow*1000&&state.lastEatTime>0) state.comboCount++;
-      else state.comboCount=1;
-      state.lastEatTime=now;
-      if(state.comboCount>state.maxCombo) state.maxCombo=state.comboCount;
-      const mult=state.comboCount,db=hasEffect('multiply')?2:1;
-      state.score+=10*mult*db;
-      if(state.comboCount>=2){state.comboDisplayText=`${state.comboCount}x COMBO`;state.comboDisplayAlpha=1;}
-      spawnParticles(state.foods[eatIdx].x,state.foods[eatIdx].y,state.foods[eatIdx].color);
-      state.foods.splice(eatIdx,1);placeFood();
-    }else{state.snake.pop();}
-
-    let effSpeed=settings.gameSpeed-Math.floor(state.score/50)*5;
-    if(hasEffect('speed')) effSpeed=Math.max(30,effSpeed*0.55);
-    if(hasEffect('slow')) effSpeed=Math.min(200,effSpeed*1.6);
-    state.speed=Math.max(30,Math.min(200,effSpeed));
-  }
-
-  function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle='rgba(0,240,255,0.04)';ctx.lineWidth=0.5;
-    for(let x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*CELL,0);ctx.lineTo(x*CELL,canvas.height);ctx.stroke();}
-    for(let y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*CELL);ctx.lineTo(canvas.width,y*CELL);ctx.stroke();}
-    state.obstacles.forEach(o=>{
-      ctx.fillStyle='#1a0000';ctx.fillRect(o.x*CELL+1,o.y*CELL+1,CELL-2,CELL-2);
-      ctx.strokeStyle='rgba(255,0,0,0.4)';ctx.lineWidth=1;ctx.strokeRect(o.x*CELL+1,o.y*CELL+1,CELL-2,CELL-2);
-      ctx.shadowColor='#ff0000';ctx.shadowBlur=6;ctx.fillStyle='rgba(255,0,0,0.15)';ctx.fillRect(o.x*CELL+1,o.y*CELL+1,CELL-2,CELL-2);ctx.shadowBlur=0;
-      const pulse=0.3+Math.sin(Date.now()/500+o.x*0.7+o.y*0.7)*0.2;
-      ctx.fillStyle=`rgba(255,0,0,${pulse})`;ctx.beginPath();ctx.arc(o.x*CELL+CELL/2,o.y*CELL+CELL/2,CELL*0.12,0,Math.PI*2);ctx.fill();
-    });
-    state.powerUpItems.forEach(p=>{
-      const def=POWERUP_DEFS[p.type],px=p.x*CELL+CELL/2,py=p.y*CELL+CELL/2,age=performance.now()-p.spawnTime,urg=age/POWERUP_LIFETIME;
-      const pls=1+Math.sin(Date.now()/150+p.x*0.5)*0.2,grad=ctx.createRadialGradient(px,py,0,px,py,CELL*0.9*pls);
-      grad.addColorStop(0,def.color);grad.addColorStop(0.4,hexToRgba(def.color,0.3));grad.addColorStop(1,hexToRgba(def.color,0));
-      ctx.fillStyle=grad;ctx.fillRect(p.x*CELL-CELL*0.6,p.y*CELL-CELL*0.6,CELL*2.2,CELL*2.2);
-      ctx.fillStyle=def.color;ctx.shadowColor=def.color;ctx.shadowBlur=8+(1-urg)*4;
-      ctx.beginPath();const s=CELL*0.28;ctx.moveTo(px,py-s);ctx.lineTo(px+s,py);ctx.lineTo(px,py+s);ctx.lineTo(px-s,py);ctx.closePath();ctx.fill();ctx.shadowBlur=0;
-      if(urg>0.7&&Math.floor(Date.now()/200)%2===0){ctx.fillStyle='rgba(255,255,255,0.5)';ctx.beginPath();ctx.arc(px,py,CELL*0.32,0,Math.PI*2);ctx.fill();}
-    });
-    state.foods.forEach(f=>{
-      const fx=f.x*CELL+CELL/2,fy=f.y*CELL+CELL/2,pls=1+Math.sin(Date.now()/200+f.x*0.5+f.y*0.5)*0.2;
-      const fg=ctx.createRadialGradient(fx,fy,0,fx,fy,CELL*pls);
-      fg.addColorStop(0,f.color);fg.addColorStop(0.3,hexToRgba(f.color,0.4));fg.addColorStop(1,hexToRgba(f.color,0));
-      ctx.fillStyle=fg;ctx.fillRect(f.x*CELL-CELL,f.y*CELL-CELL,CELL*3,CELL*3);
-      ctx.fillStyle=f.color;ctx.shadowColor=f.color;ctx.shadowBlur=10;
-      ctx.beginPath();ctx.roundRect(f.x*CELL+2,f.y*CELL+2,CELL-4,CELL-4,3);ctx.fill();ctx.shadowBlur=0;
-    });
-    state.snake.forEach((seg,i)=>{
-      const t=1-i/Math.max(state.snake.length-1,1),size=CELL-2-t*4,offset=(CELL-size)/2;
-      ctx.fillStyle=`rgba(0,240,255,${0.15+t*0.35})`;ctx.fillRect(seg.x*CELL+1,seg.y*CELL+1,CELL-2,CELL-2);
-      const g=ctx.createLinearGradient(seg.x*CELL,seg.y*CELL,seg.x*CELL+CELL,seg.y*CELL+CELL);
-      const alpha=0.6+t*0.4;g.addColorStop(0,`rgba(0,240,255,${alpha})`);g.addColorStop(1,`rgba(100,255,255,${alpha*0.6})`);
-      ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(seg.x*CELL+offset,seg.y*CELL+offset,size,size,4);ctx.fill();
-      if(i===0){
-        ctx.fillStyle='rgba(0,240,255,0.5)';ctx.beginPath();ctx.roundRect(seg.x*CELL+1,seg.y*CELL+1,CELL-2,CELL-2,5);ctx.fill();
-        ctx.fillStyle='#06060e';const ex=seg.x*CELL+CELL/2,ey=seg.y*CELL+CELL/2;
-        if(state.dx===1){ctx.fillRect(ex+2,ey-3,3,3);ctx.fillRect(ex+2,ey+1,3,3);}
-        else if(state.dx===-1){ctx.fillRect(ex-5,ey-3,3,3);ctx.fillRect(ex-5,ey+1,3,3);}
-        else if(state.dy===-1){ctx.fillRect(ex-4,ey-5,3,3);ctx.fillRect(ex+2,ey-5,3,3);}
-        else{ctx.fillRect(ex-4,ey+2,3,3);ctx.fillRect(ex+2,ey+2,3,3);}
-      }
-    });
-    for(let i=state.particles.length-1;i>=0;i--){
-      const p=state.particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=p.decay;
-      if(p.life<=0){state.particles.splice(i,1);continue;}
-      const r=parseInt(p.color.slice(1,3),16),g=parseInt(p.color.slice(3,5),16),b=parseInt(p.color.slice(5,7),16);
-      ctx.fillStyle=`rgba(${r},${g},${b},${p.life})`;ctx.beginPath();ctx.arc(p.x,p.y,2*p.life,0,Math.PI*2);ctx.fill();
-    }
-    if(state.comboDisplayAlpha>0&&state.comboDisplayText){ctx.save();ctx.globalAlpha=state.comboDisplayAlpha;ctx.font='bold 18px monospace';ctx.textAlign='center';ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=12;ctx.fillText(state.comboDisplayText,canvas.width/2,canvas.height-12);ctx.shadowBlur=0;ctx.restore();}
-    if(hasEffect('shield')&&state.snake.length>0){const h=state.snake[0];ctx.strokeStyle='rgba(0,240,255,0.6)';ctx.lineWidth=2;ctx.shadowColor='#00f0ff';ctx.shadowBlur=12;ctx.beginPath();ctx.roundRect(h.x*CELL-1,h.y*CELL-1,CELL+2,CELL+2,6);ctx.stroke();ctx.shadowBlur=0;}
-    if(state.gameOver){
-      ctx.fillStyle='rgba(6,6,14,0.85)';ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle='#ff2d7b';ctx.font='bold 20px monospace';ctx.textAlign='center';ctx.shadowColor='#ff2d7b';ctx.shadowBlur=16;
-      ctx.fillText('GAME OVER',canvas.width/2,canvas.height/2-16);
-      ctx.fillStyle='#00f0ff';ctx.font='14px monospace';ctx.fillText(`Score: ${state.score}`,canvas.width/2,canvas.height/2+20);
-      ctx.shadowBlur=0;ctx.fillStyle='#00f0ff';ctx.font='11px monospace';ctx.fillText('Click to restart',canvas.width/2,canvas.height/2+48);
-    }
-  }
-
-  function loop(ts){
-    state.frameId=requestAnimationFrame(loop);
-    if(!state.running||state.gameOver||state.paused){draw();return;}
-    if(ts-state.lastTick>=state.speed){
-      tick();state.lastTick=ts;spawnPowerUp();
-      for(const k of Object.keys(state.activeEffects)) if(state.activeEffects[k].expiresAt<=ts) delete state.activeEffects[k];
-      for(let i=state.powerUpItems.length-1;i>=0;i--) if(ts-state.powerUpItems[i].spawnTime>POWERUP_LIFETIME) state.powerUpItems.splice(i,1);
-      updateEffectsBar();
-      if(state.comboDisplayAlpha>0) state.comboDisplayAlpha=Math.max(0,state.comboDisplayAlpha-0.04);
-    }
-    draw();
-  }
-
-  function setDirection(ndx,ndy){
-    if(!state.running||state.gameOver) return;
-    if(hasEffect('reverse')){ndx=-ndx;ndy=-ndy;}
-    if(ndx===-state.dx&&ndy===-state.dy&&state.snake.length>1) return;
-    state.nextDx=ndx;state.nextDy=ndy;
-  }
-
-  canvas.addEventListener('click',()=>{if(state.gameOver){initGame();state.running=true;state.lastTick=performance.now();}});
-
-  function initGame(){
-    state.snake=[{x:12,y:12},{x:11,y:12},{x:10,y:12}];state.dx=1;state.dy=0;state.nextDx=1;state.nextDy=0;
-    state.score=0;state.speed=settings.gameSpeed;state.paused=false;state.gameOver=false;state.particles=[];
-    state.comboCount=0;state.lastEatTime=0;state.comboDisplayAlpha=0;state.comboDisplayText='';state.maxCombo=1;
-    state.activeEffects={};state.powerUpItems=[];state.lastPowerUpSpawn=0;
-    document.getElementById('snakeEffectsBar').innerHTML='';
-    generateObstacles(settings.obstacleCount);placeFoods();
-  }
-
-  initGame();
-  state.lastTick=performance.now();
-  state.frameId=requestAnimationFrame(loop);
-
-  const keyHandler = function(e){
-    const km={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],W:[0,-1],s:[0,1],S:[0,1],a:[-1,0],A:[-1,0],d:[1,0],D:[1,0]};
-    if(km[e.key]){e.preventDefault();setDirection(...km[e.key]);}
-    if(e.key===' '||e.key==='Spacebar'){e.preventDefault();if(!state.gameOver) state.paused=!state.paused;}
-  };
-  document.addEventListener('keydown', keyHandler);
-  canvas._cleanup = () => { document.removeEventListener('keydown', keyHandler); cancelAnimationFrame(state.frameId); };
-}
-</script>
-
-<!-- Giscus Guestbook -->
-<script>
-(function() {
-  var cfg = window.GISCUS_CONFIG || {};
-  var repo = cfg.repo || '';
-  var repoId = cfg.repoId || '';
-  var category = cfg.category || 'General';
-  var categoryId = cfg.categoryId || '';
-
-  var container = document.getElementById('giscusContainer');
-  if (!repo || !repoId || !categoryId) {
-    if (container) {
-      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);line-height:2;">' +
-        '<p style="font-size:48px;margin-bottom:16px;">💬</p>' +
-        '<p style="font-size:16px;font-weight:600;margin-bottom:8px;">留言板功能即将上线</p>' +
-        '<p style="font-size:13px;">请将网站代码推送至 GitHub 公开仓库，并在 <a href="https://giscus.app" target="_blank" style="color:var(--accent);">giscus.app</a> 生成配置</p>' +
-        '<p style="font-size:13px;">然后在 index.html 中设置 <code style="background:var(--accent-light);padding:2px 6px;border-radius:4px;">window.GISCUS_CONFIG</code> 即可启用</p>' +
-        '</div>';
-    }
-    return;
-  }
-
-  // Load Giscus
-  var script = document.createElement('script');
-  script.src = 'https://giscus.app/client.js';
-  script.setAttribute('data-repo', repo);
-  script.setAttribute('data-repo-id', repoId);
-  script.setAttribute('data-category', category);
-  script.setAttribute('data-category-id', categoryId);
-  script.setAttribute('data-mapping', 'pathname');
-  script.setAttribute('data-strict', '0');
-  script.setAttribute('data-reactions-enabled', '1');
-  script.setAttribute('data-emit-metadata', '0');
-  script.setAttribute('data-input-position', 'bottom');
-  script.setAttribute('data-theme', document.documentElement.classList.contains('dark') ? 'dark_dimmed' : 'light');
-  script.setAttribute('data-lang', 'zh-CN');
-  script.setAttribute('crossorigin', 'anonymous');
-  script.async = true;
-  if (container) {
-    container.innerHTML = '';
-    container.appendChild(script);
-  }
-})();
+// ═══ Back-to-Hero Button ═══
+(function(){var b=document.createElement('button');b.textContent='↑';b.style.cssText='position:fixed;bottom:24px;left:24px;z-index:100;width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,0,0,.1);background:rgba(246,242,232,.7);backdrop-filter:blur(8px);cursor:pointer;font-size:16px;color:var(--grey);transition:all .4s;opacity:0;pointer-events:none';b.onclick=function(){document.getElementById('p0').scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'})};document.body.appendChild(b);document.getElementById('scroll').addEventListener('scroll',function(){var show=this.scrollLeft>innerWidth*.5;b.style.opacity=show?'1':'0';b.style.pointerEvents=show?'auto':'none'})})();
 </script>
 </body>
 </html>
