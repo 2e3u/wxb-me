@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>埃里克 · 像素勇者</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; background: #0a0a14; overflow: hidden; }
+
+.scene {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.character-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.character-shadow {
+  position: absolute;
+  bottom: calc(50% - 420px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 30px;
+  background: radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 50%, transparent 70%);
+  border-radius: 50%;
+  transition: transform 0.3s ease-out;
+}
+</style>
+</head>
+<body>
+
+<div class="scene">
+  <canvas class="character-canvas" id="charCanvas" width="48" height="48"></canvas>
+  <div class="character-shadow" id="charShadow"></div>
+</div>
+
+<script>
+// 48x48 pixel character - Erik the Brave
+const PALETTE = {
+  0:  'transparent',
+  1:  '#0d0e18',
+  2:  '#1a1e38',
+  3:  '#252d58',
+  4:  '#3540a0',
+  5:  '#4a5ec0',
+  6:  '#c0c0d0',
+  7:  '#888898',
+  8:  '#e8ecf8',
+  9:  '#f4f4ff',
+  10: '#d44040',
+  11: '#9a2020',
+  12: '#f06050',
+  13: '#a06030',
+  14: '#704020',
+  15: '#e0a858',
+  16: '#b07030',
+  17: '#f0c8a0',
+  18: '#d09870',
+  19: '#a08060',
+  20: '#f8e0b0',
+  21: '#e8d898',
+  22: '#b8b0a0',
+  23: '#1a2440',
+  24: '#2a3860',
+  25: '#404868',
+  26: '#585860',
+  27: '#383840',
+  28: '#787880',
+};
+
+const SIZE = 48;
+const W = SIZE, H = SIZE;
+
+// Layer 1: Cape (behind body)
+const capePixels = Array.from({length: H}, () => Array(W).fill(0));
+// Cape starts from shoulders down
+const capeShape = [
+  // row, col_start, col_end, primary_color, secondary_color
+  [16, 3,7, 10,11],  [16, 40,44, 10,11],
+  [17, 2,6, 10,11],  [17, 41,45, 10,11],
+  [18, 2,5, 10,11],  [18, 42,45, 10,11],
+  [19, 2,5, 10,11],  [19, 42,45, 10,11],
+  [20, 1,4, 10,11],  [20, 43,46, 10,11],
+  [21, 1,4, 10,11],  [21, 43,46, 10,11],
+  [22, 1,4, 10,11],  [22, 43,46, 10,11],
+  [23, 1,4, 10,11],  [23, 43,46, 10,11],
+  [24, 1,4, 10,11],  [24, 43,46, 10,11],
+  [25, 1,4, 10,11],  [25, 43,46, 10,11],
+  [26, 1,4, 10,11],  [26, 43,46, 10,11],
+  [27, 1,5, 10,11],  [27, 42,46, 10,11],
+  [28, 2,5, 10,11],  [28, 42,45, 10,11],
+  [29, 2,5, 10,11],  [29, 42,45, 10,11],
+  [30, 2,5, 11,0],   [30, 42,45, 11,0],
+  [31, 2,6, 11,0],   [31, 41,45, 11,0],
+  [32, 3,6, 11,0],   [32, 41,44, 11,0],
+];
+for (const [row, cs, ce, c1, c2] of capeShape) {
+  for (let x = cs; x <= ce; x++) {
+    capePixels[row][x] = (x === cs || x === ce) ? (c2 || c1) : c1;
+  }
+}
+
+// Layer 2: Body
+const bodyPixels = Array.from({length: H}, () => Array(W).fill(0));
+
+function fillRect(layer, x1, y1, x2, y2, color) {
+  for (let y = y1; y <= y2; y++)
+    for (let x = x1; x <= x2; x++)
+      if (y >= 0 && y < H && x >= 0 && x < W) layer[y][x] = color;
+}
+
+function setPixel(layer, x, y, color) {
+  if (y >= 0 && y < H && x >= 0 && x < W) layer[y][x] = color;
+}
+
+// --- Helmet (rows 0-9) ---
+// Helmet crest
+fillRect(bodyPixels, 22, 0, 25, 0, 8);
+setPixel(bodyPixels, 21, 1, 8); setPixel(bodyPixels, 26, 1, 8);
+fillRect(bodyPixels, 23, 1, 24, 1, 9);
+// Helmet dome
+for (let y = 1; y <= 5; y++) {
+  const left = 20 - y*0.5, right = 27 + y*0.5;
+  for (let x = Math.ceil(left); x <= Math.floor(right); x++) {
+    setPixel(bodyPixels, x, y, x <= 21 || x >= 26 ? 7 : 6);
+  }
+}
+// Helmet highlight
+for (let y = 1; y <= 4; y++) setPixel(bodyPixels, 23, y, 8);
+setPixel(bodyPixels, 23, 2, 9); setPixel(bodyPixels, 24, 1, 9);
+// Helmet sides
+for (let y = 5; y <= 9; y++) {
+  setPixel(bodyPixels, 18, y, 7); setPixel(bodyPixels, 29, y, 7);
+}
+for (let y = 6; y <= 9; y++) {
+  setPixel(bodyPixels, 19, y, 6); setPixel(bodyPixels, 28, y, 6);
+}
+// Helmet front plate
+fillRect(bodyPixels, 20, 6, 27, 8, 6);
+fillRect(bodyPixels, 21, 9, 26, 9, 6);
+// Helmet visor slit (dark)
+fillRect(bodyPixels, 21, 7, 26, 7, 1);
+// Visor highlight
+setPixel(bodyPixels, 22, 6, 8); setPixel(bodyPixels, 23, 6, 8);
+setPixel(bodyPixels, 24, 6, 9); setPixel(bodyPixels, 25, 6, 8);
+// Nose guard
+fillRect(bodyPixels, 23, 8, 24, 9, 7);
+setPixel(bodyPixels, 23, 8, 8); setPixel(bodyPixels, 24, 8, 8);
+// Chin guard
+fillRect(bodyPixels, 21, 10, 26, 10, 6);
+setPixel(bodyPixels, 22, 10, 7); setPixel(bodyPixels, 25, 10, 7);
+
+// --- Face (partially visible under helmet, rows 10-12) ---
+fillRect(bodyPixels, 20, 10, 27, 10, 1); // dark under helmet
+fillRect(bodyPixels, 20, 11, 27, 11, 17); // skin face
+fillRect(bodyPixels, 21, 12, 26, 12, 17);
+setPixel(bodyPixels, 20, 11, 18); setPixel(bodyPixels, 27, 11, 18); // shadow
+setPixel(bodyPixels, 21, 12, 18); setPixel(bodyPixels, 26, 12, 18);
+// Eyes
+setPixel(bodyPixels, 22, 10, 1); setPixel(bodyPixels, 23, 10, 1); // under visor
+setPixel(bodyPixels, 24, 10, 1); setPixel(bodyPixels, 25, 10, 1);
+
+// --- Neck (rows 13-14) ---
+fillRect(bodyPixels, 21, 13, 26, 13, 18);
+fillRect(bodyPixels, 22, 14, 25, 14, 18);
+setPixel(bodyPixels, 21, 13, 19); setPixel(bodyPixels, 26, 13, 19);
+
+// --- Collar / Gorget (rows 15-16) ---
+fillRect(bodyPixels, 20, 15, 27, 15, 7);
+fillRect(bodyPixels, 19, 16, 28, 16, 7);
+setPixel(bodyPixels, 19, 15, 28); setPixel(bodyPixels, 28, 15, 28);
+fillRect(bodyPixels, 20, 15, 20, 15, 6); fillRect(bodyPixels, 27, 15, 27, 15, 6);
+
+// --- Shoulder pauldrons (rows 16-19) ---
+for (let y = 17; y <= 20; y++) {
+  setPixel(bodyPixels, 17, y, 7); setPixel(bodyPixels, 30, y, 7);
+}
+fillRect(bodyPixels, 17, 17, 18, 19, 6);
+fillRect(bodyPixels, 29, 17, 30, 19, 6);
+setPixel(bodyPixels, 17, 20, 6); setPixel(bodyPixels, 30, 20, 6);
+// Pauldron gold trim
+setPixel(bodyPixels, 17, 16, 15); setPixel(bodyPixels, 30, 16, 15);
+setPixel(bodyPixels, 17, 20, 15); setPixel(bodyPixels, 30, 20, 15);
+setPixel(bodyPixels, 17, 19, 8); setPixel(bodyPixels, 30, 19, 8); // highlight
+
+// --- Upper chest (rows 20-24) ---
+// Armor blue base
+for (let y = 21; y <= 28; y++) {
+  for (let x = 18; x <= 29; x++) {
+    if ((y === 21 && (x < 19 || x > 28)) || (y === 22 && (x <= 18 || x >= 29))) continue;
+    setPixel(bodyPixels, x, y, 3);
+  }
+}
+// Armor center gold emblem
+fillRect(bodyPixels, 22, 21, 25, 21, 15);
+fillRect(bodyPixels, 21, 22, 26, 22, 15);
+fillRect(bodyPixels, 22, 23, 25, 23, 15);
+setPixel(bodyPixels, 23, 24, 15); setPixel(bodyPixels, 24, 24, 15);
+setPixel(bodyPixels, 23, 21, 16); setPixel(bodyPixels, 24, 21, 16); // gold shadow
+// Armor highlight
+for (let y = 23; y <= 28; y++) setPixel(bodyPixels, 19, y, 5);
+setPixel(bodyPixels, 19, 23, 8); setPixel(bodyPixels, 19, 25, 8);
+// Chest plate definition
+fillRect(bodyPixels, 20, 22, 20, 27, 4);
+fillRect(bodyPixels, 27, 22, 27, 27, 4);
+// Armor sides
+for (let y = 22; y <= 27; y++) {
+  setPixel(bodyPixels, 18, y, 2);
+  setPixel(bodyPixels, 29, y, 2);
+}
+// Gold trim on armor edges
+for (let y = 21; y <= 28; y++) {
+  setPixel(bodyPixels, 18, y, y === 21 || y === 28 ? 16 : 15);
+  setPixel(bodyPixels, 29, y, y === 21 || y === 28 ? 16 : 15);
+}
+
+// Lower chest (rows 28-29)
+fillRect(bodyPixels, 19, 28, 28, 29, 3);
+fillRect(bodyPixels, 18, 28, 18, 29, 15);
+fillRect(bodyPixels, 29, 28, 29, 29, 15);
+
+// --- Belt (rows 30-32) ---
+fillRect(bodyPixels, 19, 30, 28, 30, 14);
+fillRect(bodyPixels, 19, 31, 28, 31, 13);
+fillRect(bodyPixels, 19, 32, 28, 32, 14);
+// Belt buckle
+fillRect(bodyPixels, 22, 30, 25, 32, 15);
+fillRect(bodyPixels, 23, 31, 24, 31, 20);
+setPixel(bodyPixels, 23, 30, 16); setPixel(bodyPixels, 24, 30, 16);
+setPixel(bodyPixels, 22, 31, 16); setPixel(bodyPixels, 25, 31, 16);
+
+// --- Upper legs / tunic (rows 33-36) ---
+for (let y = 33; y <= 36; y++) {
+  for (let x = 19; x <= 28; x++) {
+    setPixel(bodyPixels, x, y, x < 24 ? 23 : 23);
+  }
+}
+// Tunic split / leg separation
+for (let y = 34; y <= 36; y++) {
+  setPixel(bodyPixels, 23, y, 24); setPixel(bodyPixels, 24, y, 24);
+}
+// Tunic highlight
+for (let y = 33; y <= 36; y++) {
+  setPixel(bodyPixels, 20, y, 25);
+  setPixel(bodyPixels, 27, y, 25);
+}
+
+// --- Legs / pants (rows 37-40) ---
+for (let y = 37; y <= 41; y++) {
+  for (let x = 19; x <= 22; x++) setPixel(bodyPixels, x, y, 23);
+  for (let x = 25; x <= 28; x++) setPixel(bodyPixels, x, y, 23);
+}
+for (let y = 38; y <= 41; y++) {
+  setPixel(bodyPixels, 20, y, 25); setPixel(bodyPixels, 26, y, 25);
+}
+
+// --- Knee guards (rows 40-41) ---
+fillRect(bodyPixels, 19, 40, 22, 40, 7);
+fillRect(bodyPixels, 25, 40, 28, 40, 7);
+setPixel(bodyPixels, 20, 41, 7); setPixel(bodyPixels, 21, 41, 7);
+setPixel(bodyPixels, 26, 41, 7); setPixel(bodyPixels, 27, 41, 7);
+
+// --- Boots (rows 42-45) ---
+for (let y = 42; y <= 45; y++) {
+  for (let x = 19; x <= 22; x++) setPixel(bodyPixels, x, y, 26);
+  for (let x = 25; x <= 28; x++) setPixel(bodyPixels, x, y, 26);
+}
+// Boot highlights
+for (let y = 42; y <= 44; y++) {
+  setPixel(bodyPixels, 20, y, 28); setPixel(bodyPixels, 26, y, 28);
+}
+// Boot soles
+fillRect(bodyPixels, 18, 45, 23, 45, 27);
+fillRect(bodyPixels, 24, 45, 29, 45, 27);
+setPixel(bodyPixels, 18, 46, 27); setPixel(bodyPixels, 23, 46, 27);
+setPixel(bodyPixels, 24, 46, 27); setPixel(bodyPixels, 29, 46, 27);
+
+// Layer 3: Sword (right side)
+const swordPixels = Array.from({length: H}, () => Array(W).fill(0));
+
+// Sword blade (rises up from hand at row ~22, goes up to row ~4)
+for (let y = 4; y <= 16; y++) {
+  setPixel(swordPixels, 31, y, 21);
+  setPixel(swordPixels, 32, y, y % 2 === 0 ? 20 : 21);
+}
+// Blade center highlight
+for (let y = 5; y <= 14; y++) {
+  setPixel(swordPixels, 31, y, y % 4 === 0 ? 9 : 21);
+}
+// Crossguard
+fillRect(swordPixels, 29, 16, 33, 16, 15);
+fillRect(swordPixels, 30, 17, 32, 17, 15);
+setPixel(swordPixels, 28, 16, 16); setPixel(swordPixels, 34, 16, 16);
+// Crossguard gem
+setPixel(swordPixels, 31, 16, 12); setPixel(swordPixels, 31, 17, 12);
+// Grip
+fillRect(swordPixels, 31, 18, 31, 21, 14);
+setPixel(swordPixels, 30, 19, 13); setPixel(swordPixels, 30, 20, 13);
+setPixel(swordPixels, 32, 19, 13); setPixel(swordPixels, 32, 20, 13);
+// Pommel
+fillRect(swordPixels, 30, 22, 32, 22, 15);
+setPixel(swordPixels, 31, 23, 15);
+
+// Hand/arm holding sword
+for (let y = 18; y <= 21; y++) {
+  setPixel(bodyPixels, 28, y, 17); // skin
+}
+setPixel(bodyPixels, 29, 19, 17); setPixel(bodyPixels, 29, 20, 17);
+setPixel(bodyPixels, 30, 19, 17); setPixel(bodyPixels, 30, 20, 17);
+
+// Eyes data for blink
+const eyes = [
+  { x: 22, y: 10, c: 1 }, { x: 23, y: 10, c: 1 },
+  { x: 24, y: 10, c: 1 }, { x: 25, y: 10, c: 1 },
+];
+
+// ============================================================
+// RENDER
+// ============================================================
+
+const charCanvas = document.getElementById('charCanvas');
+const charCtx = charCanvas.getContext('2d');
+charCtx.imageSmoothingEnabled = false;
+
+const offCanvas = document.createElement('canvas');
+offCanvas.width = W;
+offCanvas.height = H;
+const offCtx = offCanvas.getContext('2d');
+
+const SCALE = 14;
+
+function resizeCharCanvas() {
+  const size = W * SCALE;
+  charCanvas.width = size;
+  charCanvas.height = size;
+  charCanvas.style.width = size + 'px';
+  charCanvas.style.height = size + 'px';
+}
+resizeCharCanvas();
+
+function drawLayer(ctx, layerData) {
+  ctx.imageSmoothingEnabled = false;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const c = layerData[y][x];
+      if (c === 0) continue;
+      ctx.fillStyle = PALETTE[c];
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+
+// Anim state
+let blinkTimer = 0, blinkDuration = 0, isBlinking = false;
+const BLINK_MIN = 180, BLINK_MAX = 360, BLINK_FRAMES = 6;
+
+let capeOffset = 0, capeDir = 1;
+let glintTimer = 0, glintActive = false;
+let breathOffset = 0, breathDir = 1;
+let frameCount = 0;
+
+function resetBlink() {
+  blinkTimer = BLINK_MIN + Math.floor(Math.random() * (BLINK_MAX - BLINK_MIN));
+}
+resetBlink();
+
+function renderCharacter() {
+  offCtx.clearRect(0, 0, W, H);
+
+  // Cape with flutter
+  const capeCopy = capePixels.map(row => [...row]);
+  if (capeOffset !== 0) {
+    for (let y = 20; y < 35; y++) {
+      const row = capeCopy[y];
+      for (let x = 0; x < 6; x++) {
+        if (row[x] === 10 || row[x] === 11) {
+          const nx = x + capeOffset;
+          if (nx >= 0 && nx < W) { row[nx] = row[x]; row[x] = 0; }
+          break;
+        }
+      }
+      for (let x = W - 1; x >= W - 8; x--) {
+        if (row[x] === 10 || row[x] === 11) {
+          const nx = x + capeOffset;
+          if (nx >= 0 && nx < W) { row[nx] = row[x]; row[x] = 0; }
+          break;
+        }
+      }
+    }
+  }
+  drawLayer(offCtx, capeCopy);
+
+  // Body
+  drawLayer(offCtx, bodyPixels);
+
+  // Sword
+  drawLayer(offCtx, swordPixels);
+
+  // Eyes blink
+  if (!isBlinking || blinkDuration < BLINK_FRAMES / 2) {
+    for (const eye of eyes) {
+      offCtx.fillStyle = PALETTE[eye.c];
+      offCtx.fillRect(eye.x, eye.y, 1, 1);
+    }
+  }
+
+  // Sword glint
+  if (glintActive) {
+    for (let y = 5; y < 15; y++) {
+      if (swordPixels[y][31] === 21 || swordPixels[y][31] === 9) {
+        offCtx.fillStyle = '#ffffff';
+        offCtx.fillRect(31, y, 1, 1);
+        break;
+      }
+    }
+  }
+
+  // Scale up
+  charCtx.clearRect(0, 0, charCanvas.width, charCanvas.height);
+  charCtx.imageSmoothingEnabled = false;
+  charCtx.drawImage(offCanvas, 0, 0, W, H, 0, 0, charCanvas.width, charCanvas.height);
+}
+
+// ============================================================
+// LOOP
+// ============================================================
+
+const scene = document.querySelector('.scene');
+const shadow = document.getElementById('charShadow');
+
+function animate() {
+  frameCount++;
+
+  // Breathing
+  breathOffset += 0.03 * breathDir;
+  if (breathOffset > 2) breathDir = -1;
+  if (breathOffset < -2) breathDir = 1;
+
+  // Blink
+  if (!isBlinking) {
+    blinkTimer--;
+    if (blinkTimer <= 0) { isBlinking = true; blinkDuration = 0; }
+  } else {
+    blinkDuration++;
+    if (blinkDuration >= BLINK_FRAMES) { isBlinking = false; resetBlink(); }
+  }
+
+  // Cape flutter
+  if (frameCount % 8 === 0) {
+    capeOffset += capeDir;
+    if (capeOffset > 2 || capeOffset < -2) capeDir *= -1;
+    if (Math.random() < 0.3) capeOffset = 0;
+  }
+
+  // Sword glint
+  glintTimer--;
+  if (glintTimer <= 0) {
+    glintActive = !glintActive;
+    glintTimer = glintActive ? 10 : 80 + Math.floor(Math.random() * 200);
+  }
+
+  scene.style.transform = `translateY(${breathOffset}px)`;
+  shadow.style.transform = `translateX(-50%) scaleX(${1 + breathOffset * 0.02})`;
+
+  renderCharacter();
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>
