@@ -1,0 +1,49 @@
+/* 工坊 · 共享设计系统 — Carbon Frost (Centered Device Cascade) -------------- */
+:root{
+  --ink:#1A1A1A; --ink-2:#666666; --ink-3:#9A9A9A;
+  --bg:#ffffff; --card:#ffffff; --soft:#FAFAFA; --line:#ECECEC;
+  --accent:#4A9FD8; --accent-2:#3E8CC4; --accent-soft:#EAF4FB; --accent-txt:#2E7DB0;
+  --green:#4C8C5A; --green-soft:#EAF5EC;
+  --amber:#B07A1E; --amber-soft:#FBF1E0;
+  --red:#C0584C;   --red-soft:#FBECEA;
+  --blue:#2E7DB0;  --blue-soft:#EAF4FB;
+  --slate:#777777; --slate-soft:#F2F2F1;
+  --radius:12px; --radius-sm:4px; --radius-pill:9999px;
+  --shadow:0 1px 2px rgba(20,24,34,.04),0 4px 12px rgba(20,24,34,.05);
+  --shadow-lg:0 4px 6px rgba(0,0,0,.03),0 18px 42px rgba(0,0,0,.09);
+  --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei","Source Han Sans SC",sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Menlo",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;line-height:1.6}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* 顶栏 */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:62px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap}
+.brand .mark{color:var(--accent);font-size:16px}
+.brand .name{font-size:17px;color:var(--ink)}
+.topbar .spacer{flex:1}
+.topbar a.nav{color:var(--ink-2);font-size:14px;padding:6px 10px;border-radius:8px}
+.topbar a.nav:hover{color:var(--ink)}
+
+/* 按钮 — 胶囊 */
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;cursor:pointer;font-weight:600;font-size:14px;padding:11px 20px;border-radius:var(--radius-pill);background:var(--accent);color:#fff;transition:background .18s ease,transform .12s ease,box-shadow .2s}
+.btn:hover{background:var(--accent-2);transform:translateY(-1px);box-shadow:0 6px 18px rgba(74,159,216,.30)}
+.btn.ghost{background:transparent;color:var(--ink-2);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--soft);color:var(--ink);box-shadow:none}
+.btn.sm{padding:8px 16px;font-size:14px}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:var(--radius-pill);line-height:1.4}
+.chip.green{background:var(--green-soft);color:var(--green)}
+.chip.amber{background:var(--amber-soft);color:var(--amber)}
+.chip.red{background:var(--red-soft);color:var(--red)}
+.chip.blue{background:var(--blue-soft);color:var(--blue)}
+.chip.slate{background:var(--slate-soft);color:var(--slate)}
+
+/* footer */
+.foot{color:var(--ink-3);font-size:13px;text-align:center;padding:48px 0 60px;border-top:1px solid var(--line);margin-top:60px}
