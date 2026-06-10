@@ -497,18 +497,18 @@ function reconcile(orders,pays){
 }
 
 function summarizePayments(pays){
-  var P=markInternalTransfers(pays.map(function(p,i){
+  var P=attachPaymentAudit(markInternalTransfers(pays.map(function(p,i){
     var guessed=smartCategorize(p.product||'',p.customer||'',p.method||'');
     var cat=guessed==='其他'&&p.category?p.category:guessed;
     return{
     i:i,id:p.id,party:p.customer,amount:p.amount,c:cents(p.amount),time:p.time,channel:p.channel||'其他',
     product:p.product||'',direction:p.direction||(p.amount<0?'支出':'收入'),status:p.status||'',method:p.method||'',category:cat,sourceCategory:p.category||''
-  };}));
+  };})));
   var total=0, income=0, expense=0, incomeCount=0, expenseCount=0, byChannel={}, byCategory={}, catTotal=0, refund=0, internalAmount=0, internalCount=0;
   P.forEach(function(p){
-    if(p.internalTransfer){
+    if(!p.auditIncluded){
       internalAmount+=Math.abs(p.amount);
-      internalCount++;
+      if(p.internalTransfer) internalCount++;
       return;
     }
     byChannel[p.channel]=(byChannel[p.channel]||0)+p.amount;
@@ -518,7 +518,14 @@ function summarizePayments(pays){
     catTotal+=Math.abs(p.amount);
     if(p.amount<0) refund+=p.amount;
   });
-  return {P:P,total:total,income:income,expense:expense,incomeCount:incomeCount,expenseCount:expenseCount,byChannel:byChannel,byCategory:byCategory,catTotal:catTotal,refund:refund,internalAmount:internalAmount,internalCount:internalCount};
+  return {
+    P:P,total:total,income:income,expense:expense,incomeCount:incomeCount,expenseCount:expenseCount,
+    byChannel:byChannel,byCategory:byCategory,catTotal:catTotal,refund:refund,
+    internalAmount:internalAmount,internalCount:internalCount,
+    rawCount:P.length,
+    includedCount:P.filter(function(p){return p.auditIncluded;}).length,
+    excludedCount:P.filter(function(p){return !p.auditIncluded;}).length
+  };
 }
 function isInternalTransferTarget(p){
   var text=(p.party+' '+p.product+' '+p.method+' '+p.category+' '+p.sourceCategory).toLowerCase();
@@ -545,6 +552,33 @@ function markInternalTransfers(payments){
     target.internalReason='与 '+(match.party||'上一笔')+' 同额转入匹配，视为账户内部流转';
   });
   return rows;
+}
+function auditPayment(p){
+  if(p.internalTransfer){
+    return {
+      auditIncluded:false,
+      auditStatus:'内部流转已排除',
+      auditRule:'RULE_INTERNAL_TRANSFER_YUEBAO',
+      auditReason:p.internalReason||'疑似账户余额、余额宝或理财账户之间的同额流转，未计入期间收入/支出汇总'
+    };
+  }
+  if(p.amount>=0){
+    return {
+      auditIncluded:true,
+      auditStatus:'计入收入',
+      auditRule:'RULE_DIRECT_INCOME',
+      auditReason:'正向流水计入期间收入；若实际为借款、代收或账户调拨，需要人工复核。'
+    };
+  }
+  return {
+    auditIncluded:true,
+    auditStatus:'计入支出',
+    auditRule:'RULE_DIRECT_EXPENSE',
+    auditReason:'负向流水计入期间支出/退款；若实际为提现或账户调拨，需要人工复核。'
+  };
+}
+function attachPaymentAudit(payments){
+  return payments.map(function(p){return Object.assign({},p,auditPayment(p));});
 }
 
 /* ===================== 渲染 ===================== */
@@ -636,7 +670,8 @@ function renderPaymentSummary(r){
     kpi('good','收入合计','¥'+fmt(r.income),r.incomeCount+' 笔计入'),
     kpi('warn','支出/退款','¥'+fmt(Math.abs(r.expense)),r.expenseCount+' 笔计入'),
     kpi('','期间净流入','¥'+fmt(r.total),'不是账户余额'),
-    r.internalCount?kpi('','内部流转','¥'+fmt(r.internalAmount),r.internalCount+' 笔已排除'):''
+    r.internalCount?kpi('','内部流转','¥'+fmt(r.internalAmount),r.internalCount+' 笔已排除'):'',
+    kpi('','审计口径',r.includedCount+'/'+r.rawCount+' 笔','排除 '+r.excludedCount+' 笔')
   ].join('');
   document.getElementById('filters').className='filters pay-filter-panel';
   document.getElementById('filters').innerHTML=categoryPanel(r);
@@ -658,7 +693,7 @@ function renderPaymentSummary(r){
   var rows=visible.map(function(p){
     var title=paymentTitle(p), detail=paymentDetail(p), no=shortId(p.id), cc=categoryColor(p.category);
     return '<tr>'+
-      '<td class="pay-main"><b>'+title+'</b>'+detail+(no?'<div class="meta">单号 '+no+'</div>':'')+'</td>'+
+      '<td class="pay-main"><b>'+title+'</b>'+detail+auditLine(p)+(no?'<div class="meta">单号 '+no+'</div>':'')+'</td>'+
       '<td><span style="display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;background:'+cc+'15;color:'+cc+';border:1px solid '+cc+'30">'+(p.category||'其他')+'</span></td>'+
       '<td><span class="chip blue">'+(p.channel||'其他')+'</span></td>'+
       '<td class="num '+(p.amount<0?'diff-pos':'')+'">'+(p.amount<0?'-':'')+'¥'+fmt(Math.abs(p.amount))+'</td>'+
@@ -666,6 +701,7 @@ function renderPaymentSummary(r){
   }).join('');
   document.getElementById('tableWrap').innerHTML=
     '<div class="panel" style="padding:14px 16px;margin-bottom:14px;color:var(--ink-2);font-size:14px">当前是<strong style="color:var(--ink)">只看收款流水</strong>模式。<strong style="color:var(--ink)">期间净流入不是账户余额</strong>，它只表示导入时间段内的收入减支出；当前余额还要看期初余额、提现、银行卡/余额宝等账户间流转。点击分类标签筛选，补应收清单后判断未收/分笔。</div>'+
+    '<div class="panel" style="padding:14px 16px;margin-bottom:14px;color:var(--ink-2);font-size:14px"><strong style="color:var(--ink)">审计口径</strong>：导入原始流水 '+r.rawCount+' 笔，计入汇总 '+r.includedCount+' 笔，排除 '+r.excludedCount+' 笔。每一笔都保留在列表和导出表里，并标明规则编号与原因。</div>'+
     tools+
     '<table class="rec ledger"><thead><tr><th>客户 / 摘要</th><th>分类</th><th>渠道</th><th style="text-align:right">金额</th><th>时间</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" class="muted">当前条件下没有流水</td></tr>')+'</tbody></table>';
   document.getElementById('placeholder').classList.add('hidden');
@@ -756,6 +792,11 @@ function paymentDetail(p){
   if(p.method) parts.push(p.method);
   return parts.length?'<div class="note">'+esc(parts.join(' · '))+'</div>':'';
 }
+function auditLine(p){
+  var chip=p.auditIncluded?'green':'amber';
+  return '<div class="note"><span class="chip '+chip+'">'+esc(p.auditStatus||'未审计')+'</span> '+
+    '<span class="meta">'+esc(p.auditRule||'')+' · '+esc(p.auditReason||'')+'</span></div>';
+}
 function checkRow(p,label,chip,desc){
   return '<tr class="row-hi"><td><b>'+(p.party||'—')+'</b>'+(p.id?'<div class="note">'+p.id+'</div>':'')+'</td>'+
     '<td class="num">¥'+fmt(p.amount)+'</td><td>'+desc+(p.time?'<div class="note">'+p.time+'</div>':'')+'</td>'+
@@ -771,15 +812,32 @@ function bindFilters(){
 function exportReport(){
   if(!LAST){
     if(!LAST_SUMMARY) return;
-    var rows=[['客户/对方','商品/摘要','渠道','收支','金额','时间','状态','流水号']];
-    visiblePayments(LAST_SUMMARY,FLTPAY,PAY_KIND,PAY_SORT).forEach(function(p){ rows.push([p.party,p.product||p.category||'',p.channel,p.internalTransfer?'内部流转':p.direction,p.amount,p.time,p.internalTransfer?(p.internalReason||'内部流转'):p.status,p.id]); });
+    var rows=[['客户/对方','商品/摘要','渠道','收支','金额','时间','是否计入汇总','审计口径','规则编号','原因','流水号']];
+    visiblePayments({P:LAST_SUMMARY.P},'all','all','date-desc').forEach(function(p){
+      rows.push([
+        p.party,
+        p.product||p.category||'',
+        p.channel,
+        p.internalTransfer?'内部流转':p.direction,
+        p.amount,
+        p.time,
+        p.auditIncluded?'是':'否',
+        p.auditStatus||'',
+        p.auditRule||'',
+        p.auditReason||p.internalReason||p.status||'',
+        p.id
+      ]);
+    });
     rows.push([]);
-    rows.push(['收入合计','','','',LAST_SUMMARY.income,'','','']);
-    rows.push(['支出/退款','','','',LAST_SUMMARY.expense,'','','']);
-    rows.push(['期间净流入（非账户余额）','','','',LAST_SUMMARY.total,'','','']);
-    if(LAST_SUMMARY.internalAmount) rows.push(['内部流转（已排除）','','','',LAST_SUMMARY.internalAmount,'','','']);
-    Object.keys(LAST_SUMMARY.byChannel).forEach(function(ch){ rows.push(['渠道合计',ch,'','',LAST_SUMMARY.byChannel[ch],'','','']); });
-    var sws=XLSX.utils.aoa_to_sheet(rows); sws['!cols']=[{wch:18},{wch:30},{wch:10},{wch:8},{wch:12},{wch:18},{wch:12},{wch:26}];
+    rows.push(['导入原始流水','','','',LAST_SUMMARY.rawCount,'','','','','','']);
+    rows.push(['计入汇总流水','','','',LAST_SUMMARY.includedCount,'','','','','','']);
+    rows.push(['排除汇总流水','','','',LAST_SUMMARY.excludedCount,'','','','','','']);
+    rows.push(['收入合计','','','',LAST_SUMMARY.income,'','','','','','']);
+    rows.push(['支出/退款','','','',LAST_SUMMARY.expense,'','','','','','']);
+    rows.push(['期间净流入（非账户余额）','','','',LAST_SUMMARY.total,'','','','','','']);
+    if(LAST_SUMMARY.internalAmount) rows.push(['内部流转（已排除）','','','',LAST_SUMMARY.internalAmount,'','','','','','']);
+    Object.keys(LAST_SUMMARY.byChannel).forEach(function(ch){ rows.push(['渠道合计',ch,'','',LAST_SUMMARY.byChannel[ch],'','','','','','']); });
+    var sws=XLSX.utils.aoa_to_sheet(rows); sws['!cols']=[{wch:18},{wch:30},{wch:10},{wch:10},{wch:12},{wch:18},{wch:12},{wch:16},{wch:28},{wch:48},{wch:26}];
     var swb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(swb,sws,'收款汇总');
     XLSX.writeFile(swb,'收款汇总_'+new Date().toISOString().slice(0,10)+'.xlsx');
     return;
