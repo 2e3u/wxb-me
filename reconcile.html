@@ -635,7 +635,7 @@ function renderPaymentSummary(r){
   document.getElementById('kpis').innerHTML=[
     kpi('good','收入合计','¥'+fmt(r.income),r.incomeCount+' 笔计入'),
     kpi('warn','支出/退款','¥'+fmt(Math.abs(r.expense)),r.expenseCount+' 笔计入'),
-    kpi('','净额','¥'+fmt(r.total),''),
+    kpi('','期间净流入','¥'+fmt(r.total),'不是账户余额'),
     r.internalCount?kpi('','内部流转','¥'+fmt(r.internalAmount),r.internalCount+' 笔已排除'):''
   ].join('');
   document.getElementById('filters').className='filters pay-filter-panel';
@@ -665,7 +665,7 @@ function renderPaymentSummary(r){
       '<td>'+(p.time||'<span class="muted">无时间</span>')+'</td></tr>';
   }).join('');
   document.getElementById('tableWrap').innerHTML=
-    '<div class="panel" style="padding:14px 16px;margin-bottom:14px;color:var(--ink-2);font-size:14px">当前是<strong style="color:var(--ink)">只看收款流水</strong>模式。点击分类标签筛选。补应收清单后判断未收/分笔。</div>'+
+    '<div class="panel" style="padding:14px 16px;margin-bottom:14px;color:var(--ink-2);font-size:14px">当前是<strong style="color:var(--ink)">只看收款流水</strong>模式。<strong style="color:var(--ink)">期间净流入不是账户余额</strong>，它只表示导入时间段内的收入减支出；当前余额还要看期初余额、提现、银行卡/余额宝等账户间流转。点击分类标签筛选，补应收清单后判断未收/分笔。</div>'+
     tools+
     '<table class="rec ledger"><thead><tr><th>客户 / 摘要</th><th>分类</th><th>渠道</th><th style="text-align:right">金额</th><th>时间</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" class="muted">当前条件下没有流水</td></tr>')+'</tbody></table>';
   document.getElementById('placeholder').classList.add('hidden');
@@ -776,7 +776,7 @@ function exportReport(){
     rows.push([]);
     rows.push(['收入合计','','','',LAST_SUMMARY.income,'','','']);
     rows.push(['支出/退款','','','',LAST_SUMMARY.expense,'','','']);
-    rows.push(['净额','','','',LAST_SUMMARY.total,'','','']);
+    rows.push(['期间净流入（非账户余额）','','','',LAST_SUMMARY.total,'','','']);
     if(LAST_SUMMARY.internalAmount) rows.push(['内部流转（已排除）','','','',LAST_SUMMARY.internalAmount,'','','']);
     Object.keys(LAST_SUMMARY.byChannel).forEach(function(ch){ rows.push(['渠道合计',ch,'','',LAST_SUMMARY.byChannel[ch],'','','']); });
     var sws=XLSX.utils.aoa_to_sheet(rows); sws['!cols']=[{wch:18},{wch:30},{wch:10},{wch:8},{wch:12},{wch:18},{wch:12},{wch:26}];
